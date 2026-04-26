@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+
+# Data & Models (large files)
+data/raw/*.csv
+data/processed/*.csv
+models/*.pkl
+models/*.npy
+models/*.joblib
+
+# Media (generated plots)
+webapp/media/shap_plots/*.png
+
+# Django
+db.sqlite3
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

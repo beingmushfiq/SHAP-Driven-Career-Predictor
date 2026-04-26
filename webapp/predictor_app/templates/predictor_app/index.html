@@ -1,0 +1,53 @@
+{% extends 'predictor_app/base.html' %}
+
+{% block title %}Home | Career Predictor{% endblock %}
+
+{% block content %}
+<div class="row align-items-center min-vh-75">
+    <div class="col-lg-6">
+        <h1 class="display-3 fw-bold mb-4">
+            Predict Your Future with <span style="background: var(--accent-gradient); -webkit-background-clip: text; -webkit-fill-color: transparent; -webkit-text-fill-color: transparent;">Explainable AI</span>
+        </h1>
+        <p class="lead text-secondary mb-5">
+            Analyze your academic performance and soft skills using our state-of-the-art XGBoost model, with localized SHAP explanations to understand the 'why' behind every prediction.
+        </p>
+        <div class="d-flex gap-3">
+            <a href="{% url 'predict' %}" class="btn btn-primary btn-lg">Get Started</a>
+            <a href="{% url 'analysis' %}" class="btn btn-outline-light btn-lg">View Global Insights</a>
+        </div>
+    </div>
+    <div class="col-lg-6 mt-5 mt-lg-0">
+        <div class="glass-card text-center">
+            <div class="mb-4">
+                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-info">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                    <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                </svg>
+            </div>
+            <h3>Localized Career Prediction</h3>
+            <p class="text-secondary">We use 17+ academic and soft-skill features to provide high-accuracy career recommendations tailored to your profile.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5 pt-5">
+    <div class="col-md-4 mb-4">
+        <div class="glass-card h-100">
+            <h4 class="text-info mb-3">XGBoost Engine</h4>
+            <p class="text-secondary">High-performance gradient boosting classifier trained on localized academic datasets for superior predictive accuracy.</p>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="glass-card h-100">
+            <h4 class="text-info mb-3">SHAP Explanations</h4>
+            <p class="text-secondary">No black-box predictions. Every result comes with a waterfall plot showing which features pushed the decision towards a specific career.</p>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="glass-card h-100">
+            <h4 class="text-info mb-3">Data Driven</h4>
+            <p class="text-secondary">Comprehensive analysis covering logical reasoning, coding skills, public speaking, and self-learning capabilities.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

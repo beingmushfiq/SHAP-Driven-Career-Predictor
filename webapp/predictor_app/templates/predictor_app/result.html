@@ -1,0 +1,70 @@
+{% extends 'predictor_app/base.html' %}
+
+{% block title %}Result | Career Predictor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="text-center mb-5">
+            <span class="badge bg-info text-white mb-2 px-3 py-2 rounded-pill fw-bold">PREDICTION RESULT</span>
+            <h2 class="display-5 fw-bold">Your Ideal Career Path</h2>
+        </div>
+
+        <div class="glass-card text-center mb-5 p-5" style="border-left: 5px solid var(--accent-color);">
+            <h1 class="display-3 fw-bold mb-3 text-info">{{ career }}</h1>
+            <p class="lead text-secondary">We are <span class="text-primary fw-bold">{{ confidence }}</span> confident about this recommendation.</p>
+            
+            <div class="row justify-content-center mt-5">
+                <div class="col-md-6">
+                    <h5 class="mb-3 text-secondary">Top 3 Alternatives</h5>
+                    <div class="list-group list-group-flush">
+                        {% for label, prob in top_predictions %}
+                            <div class="list-group-item bg-transparent text-secondary border-secondary d-flex justify-content-between align-items-center">
+                                {{ label }}
+                                <span class="badge bg-secondary">{{ prob|floatformat:2 }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold mb-0">Explainable Analysis (SHAP)</h3>
+                <span class="badge border border-info text-info">Localized Interpretation</span>
+            </div>
+            
+            <p class="text-secondary mb-4">
+                The waterfall plot below illustrates how each of your input features contributed to the final prediction. 
+                <span class="text-info">Positive values (red)</span> pushed the model towards this career, while 
+                <span class="text-danger">negative values (blue)</span> pushed it away.
+            </p>
+
+            <div class="text-center bg-white rounded p-3 mb-4 shadow-sm overflow-hidden">
+                <img src="{{ shap_plot_url }}" alt="SHAP Waterfall Plot" class="img-fluid rounded shap-image">
+            </div>
+
+            <style>
+                .shap-image {
+                    transition: transform 0.5s ease;
+                    cursor: zoom-in;
+                }
+                .shap-image:hover {
+                    transform: scale(1.02);
+                }
+            </style>
+
+            <div class="alert alert-info bg-light border-info text-dark py-3">
+                <h5 class="text-info"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> How to read this?</h5>
+                The features at the top had the most influence. The <strong>f(x)</strong> value represents the model's confidence before softmax, and the base value <strong>E[f(x)]</strong> is the average prediction across the background dataset.
+            </div>
+        </div>
+
+        <div class="text-center mb-5">
+            <a href="{% url 'predict' %}" class="btn btn-outline-light btn-lg me-3">New Assessment</a>
+            <a href="{% url 'analysis' %}" class="btn btn-primary btn-lg">View Global Insights</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

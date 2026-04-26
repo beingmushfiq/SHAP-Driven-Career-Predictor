@@ -1,0 +1,60 @@
+{% extends 'predictor_app/base.html' %}
+
+{% block title %}About | Career Predictor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h2 class="display-5 fw-bold mb-4 text-center">About the Project</h2>
+        
+        <div class="glass-card mb-5">
+            <h4 class="text-info mb-3">Thesis Title</h4>
+            <p class="lead">SHAP-Driven Feature Importance Analysis of XGBoost for Explainable Localized Career Prediction Using Academic and Soft-Skill Data</p>
+        </div>
+
+        <div class="glass-card mb-5">
+            <h4 class="text-info mb-4">Methodology</h4>
+            <ul class="list-unstyled">
+                <li class="mb-3 d-flex align-items-start">
+                    <span class="badge bg-info me-3 mt-1">1</span>
+                    <div>
+                        <strong>Data Ingestion:</strong> Merging disparate datasets containing student academic records, hackathon participations, and psychological soft-skill traits.
+                    </div>
+                </li>
+                <li class="mb-3 d-flex align-items-start">
+                    <span class="badge bg-info me-3 mt-1">2</span>
+                    <div>
+                        <strong>Pipeline Engineering:</strong> Robust preprocessing using LabelEncoding and schema locking to ensure inference consistency.
+                    </div>
+                </li>
+                <li class="mb-3 d-flex align-items-start">
+                    <span class="badge bg-info me-3 mt-1">3</span>
+                    <div>
+                        <strong>Gradient Boosting:</strong> Implementation of XGBoost with stratified hyperparameter tuning to handle multi-class career labels.
+                    </div>
+                </li>
+                <li class="mb-3 d-flex align-items-start">
+                    <span class="badge bg-info me-3 mt-1">4</span>
+                    <div>
+                        <strong>Explainable AI (XAI):</strong> Integration of SHAP TreeExplainer to break down the "black box" model into interpretable additive feature contributions.
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="glass-card mb-5">
+            <h4 class="text-info mb-3">Technologies Used</h4>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge border border-secondary text-secondary">Python 3.14</span>
+                <span class="badge border border-secondary text-secondary">XGBoost</span>
+                <span class="badge border border-secondary text-secondary">SHAP</span>
+                <span class="badge border border-secondary text-secondary">Django 6.0</span>
+                <span class="badge border border-secondary text-secondary">Scikit-Learn</span>
+                <span class="badge border border-secondary text-secondary">Pandas</span>
+                <span class="badge border border-secondary text-secondary">Matplotlib</span>
+                <span class="badge border border-secondary text-secondary">Bootstrap 5</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

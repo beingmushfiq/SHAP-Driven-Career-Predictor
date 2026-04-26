@@ -1,0 +1,115 @@
+{% extends 'predictor_app/base.html' %}
+
+{% block title %}Predict | Career Predictor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Career Assessment Form</h2>
+            <p class="text-secondary">Please provide accurate details for the most localized prediction.</p>
+        </div>
+
+        <form method="POST" class="glass-card shadow-lg mb-5">
+            {% csrf_token %}
+            
+            <h4 class="mb-4 text-info">Core Cognitive & Technical Skills</h4>
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.logical_quotient.label }}</label>
+                    {{ form.logical_quotient }}
+                    {% if form.logical_quotient.errors %}
+                        <div class="text-danger small">{{ form.logical_quotient.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.coding_skills.label }}</label>
+                    {{ form.coding_skills }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.hackathons.label }}</label>
+                    {{ form.hackathons }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.public_speaking.label }}</label>
+                    {{ form.public_speaking }}
+                </div>
+            </div>
+
+            <hr class="my-4 opacity-10">
+
+            <h4 class="mb-4 text-info">Academic & Learning Profile</h4>
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.self_learning.label }}</label>
+                    {{ form.self_learning }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.extra_courses.label }}</label>
+                    {{ form.extra_courses }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.certifications.label }}</label>
+                    {{ form.certifications }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">{{ form.workshops.label }}</label>
+                    {{ form.workshops }}
+                </div>
+            </div>
+
+            <hr class="my-4 opacity-10">
+
+            <h4 class="mb-4 text-info">Interests & Preferences</h4>
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Interested Subjects</label>
+                    {{ form.interested_subjects }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Career Interest</label>
+                    {{ form.interested_career }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Work Style</label>
+                    {{ form.hard_smart_worker }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Track Preference</label>
+                    {{ form.management_technical }}
+                </div>
+            </div>
+
+            <hr class="my-4 opacity-10">
+
+            <h4 class="mb-4 text-info">Miscellaneous</h4>
+            <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Reading/Writing</label>
+                    {{ form.reading_writing_skills }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Memory Power</label>
+                    {{ form.memory_capability }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Preferred Company</label>
+                    {{ form.company_type }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Reading Preference</label>
+                    {{ form.book_general_genre }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Elder's Advise</label>
+                    {{ form.senior_elder_advise }}
+                </div>
+            </div>
+
+            <div class="d-grid mt-5">
+                <button type="submit" class="btn btn-primary btn-lg">Analyze & Predict Career</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

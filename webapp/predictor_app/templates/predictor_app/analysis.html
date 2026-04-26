@@ -1,0 +1,63 @@
+{% extends 'predictor_app/base.html' %}
+
+{% block title %}Global Analysis | Career Predictor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold">Global Feature Importance Analysis</h2>
+            <p class="text-secondary lead">Understand what matters most in career prediction across the entire population.</p>
+        </div>
+
+        <div class="glass-card mb-5">
+            <h3 class="fw-bold mb-4">SHAP Global Summary</h3>
+            <p class="text-secondary mb-4">
+                This plot shows the mean absolute SHAP value for each feature. Features with higher values have a larger impact on the model's predictions overall.
+            </p>
+            <div class="text-center bg-white rounded p-4 mb-2 shadow-sm overflow-hidden">
+                <img src="{{ summary_url }}" alt="Global SHAP Summary" class="img-fluid rounded plot-zoom">
+            </div>
+        </div>
+
+        <div class="glass-card mb-5">
+            <h3 class="fw-bold mb-4">XGBoost vs SHAP Comparison</h3>
+            <p class="text-secondary mb-4">
+                Comparing built-in XGBoost weight importance (how often a feature is used to split) with SHAP magnitude (the actual impact on output). 
+                Note how soft skills compare to academic scores.
+            </p>
+            <div class="text-center bg-white rounded p-4 mb-2 shadow-sm overflow-hidden">
+                <img src="{{ comparison_url }}" alt="Feature Importance Comparison" class="img-fluid rounded plot-zoom">
+            </div>
+        </div>
+
+        <style>
+            .plot-zoom {
+                transition: transform 0.5s ease;
+                cursor: zoom-in;
+            }
+            .plot-zoom:hover {
+                transform: scale(1.015);
+            }
+        </style>
+
+        <div class="glass-card mb-5">
+            <h3 class="fw-bold mb-4">Key Insights</h3>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="p-3 border border-secondary rounded h-100">
+                        <h5 class="text-info">Dominant Features</h5>
+                        <p class="text-secondary small">Based on our analysis, features like <strong>Coding Skills</strong> and <strong>Logical Quotient</strong> often have the highest global impact, but soft skills like <strong>Public Speaking</strong> are critical for management roles.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="p-3 border border-secondary rounded h-100">
+                        <h5 class="text-info">Localized Variance</h5>
+                        <p class="text-secondary small">While global trends exist, SHAP reveals that for specific individuals, a single "niche" certification can completely shift the predicted career path, demonstrating the model's non-linear intelligence.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
