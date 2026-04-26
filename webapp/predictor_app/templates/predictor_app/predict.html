@@ -40,6 +40,13 @@
 
             <h4 class="mb-4 text-info">Academic & Learning Profile</h4>
             <div class="row mb-4">
+                <div class="col-md-12 mb-3">
+                    <label class="form-label">{{ form.cgpa.label }}</label>
+                    {{ form.cgpa }}
+                    {% if form.cgpa.errors %}
+                        <div class="text-danger small">{{ form.cgpa.errors }}</div>
+                    {% endif %}
+                </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">{{ form.self_learning.label }}</label>
                     {{ form.self_learning }}

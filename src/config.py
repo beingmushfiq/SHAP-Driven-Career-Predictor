@@ -81,6 +81,7 @@ class Config:
         'hackathons',
         'coding_skills',
         'public_speaking',
+        'cgpa',
     ]
 
     CATEGORICAL_FEATURES = [
@@ -107,6 +108,7 @@ class Config:
         'hackathons': (0, 10),
         'coding_skills': (1, 10),
         'public_speaking': (1, 10),
+        'cgpa': (0, 10),
     }
 
     CATEGORICAL_OPTIONS = {

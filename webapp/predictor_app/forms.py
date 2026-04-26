@@ -6,22 +6,28 @@ class CareerPredictionForm(forms.Form):
     logical_quotient = forms.IntegerField(
         label="Logical Quotient (1-10)",
         min_value=1, max_value=10,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 7'})
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     hackathons = forms.IntegerField(
         label="Number of Hackathons (0-10)",
         min_value=0, max_value=10,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 3'})
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     coding_skills = forms.IntegerField(
         label="Coding Skills (1-10)",
         min_value=1, max_value=10,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 8'})
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
     public_speaking = forms.IntegerField(
         label="Public Speaking (1-10)",
         min_value=1, max_value=10,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 6'})
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+
+    cgpa = forms.FloatField(
+        label="CGPA (0.0-10.0)",
+        min_value=0.0, max_value=10.0,
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
 
     # Categorical features - MultipleChoiceField for multi-select support
