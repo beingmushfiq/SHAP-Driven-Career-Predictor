@@ -8,7 +8,6 @@ Provides:
 - XGBoost vs SHAP feature importance comparison
 """
 
-import os
 import uuid
 import threading
 from pathlib import Path
@@ -66,7 +65,7 @@ class SHAPExplainer:
             raise FileNotFoundError(f"Background data not found: {Config.SHAP_BACKGROUND_PATH}")
 
         self._model = joblib.load(Config.MODEL_PATH)
-        self._background = np.load(Config.SHAP_BACKGROUND_PATH)[:Config.SHAP_BACKGROUND_SIZE]
+        self._background = np.load(Config.SHAP_BACKGROUND_PATH)
 
         with open(Config.FEATURE_SCHEMA_PATH, 'r') as f:
             schema = json.load(f)
