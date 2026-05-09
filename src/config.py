@@ -15,6 +15,9 @@ load_dotenv()
 
 class Config:
     """Immutable configuration object for the entire pipeline."""
+    
+    # ─── UI & Calibration ───────────────────────────────────────────
+    PREDICTION_SHARPENING = float(os.environ.get('PREDICTION_SHARPENING', 3.5))
 
     # ─── Project Root ───────────────────────────────────────────────
     PROJECT_ROOT = Path(os.environ.get(
@@ -77,103 +80,84 @@ class Config:
     # The actual schema is locked after training via feature_schema.json.
 
     NUMERICAL_FEATURES = [
-        'logical_quotient',
-        'hackathons',
+        'gpa',
+        'extracurricular_activities',
+        'internships',
+        'projects',
+        'leadership_positions',
+        'field_specific_courses',
+        'research_experience',
         'coding_skills',
-        'public_speaking',
-        'cgpa',
+        'communication_skills',
+        'problem_solving_skills',
+        'teamwork_skills',
+        'analytical_skills',
+        'presentation_skills',
+        'networking_skills',
+        'industry_certifications',
     ]
 
     CATEGORICAL_FEATURES = [
-        'self_learning',
-        'extra_courses',
-        'certifications',
-        'workshops',
-        'reading_writing_skills',
-        'memory_capability',
-        'interested_subjects',
-        'interested_career',
-        'company_type',
-        'senior_elder_advise',
-        'book_general_genre',
-        'management_technical',
-        'hard_smart_worker',
+        'field',
     ]
 
-    TARGET_COLUMN = 'career_label'
+    TARGET_COLUMN = 'career'
 
     # ─── Feature Metadata (for form validation) ────────────────────
     NUMERICAL_RANGES = {
-        'logical_quotient': (1, 10),
-        'hackathons': (0, 10),
-        'coding_skills': (1, 10),
-        'public_speaking': (1, 10),
-        'cgpa': (0, 10),
+        'gpa': (2.0, 4.0),
+        'extracurricular_activities': (0, 10),
+        'internships': (0, 5),
+        'projects': (0, 10),
+        'leadership_positions': (0, 1),
+        'field_specific_courses': (0, 10),
+        'research_experience': (0, 1),
+        'coding_skills': (0, 5),
+        'communication_skills': (0, 5),
+        'problem_solving_skills': (0, 5),
+        'teamwork_skills': (0, 5),
+        'analytical_skills': (0, 5),
+        'presentation_skills': (0, 5),
+        'networking_skills': (0, 5),
+        'industry_certifications': (0, 1),
     }
 
     CATEGORICAL_OPTIONS = {
-        'self_learning': ['Yes', 'No'],
-        'extra_courses': ['Yes', 'No'],
-        'certifications': [
-            'App Development', 'Distro Making', 'Full Stack',
-            'Hadoop', 'Information Security', 'Machine Learning',
-            'Python', 'R Programming', 'Shell Programming',
+        'field': [
+            'Architecture', 'Art', 'Biology', 'Business', 'Chemistry',
+            'Computer Science', 'Education', 'Engineering', 'Finance',
+            'Law', 'Marketing', 'Medicine', 'Music', 'Physics', 'Psychology'
         ],
-        'workshops': [
-            'Cloud Computing', 'Data Science', 'Database Security',
-            'Game Development', 'Hacking', 'System Designing',
-            'Testing', 'Web Technologies',
-        ],
-        'reading_writing_skills': ['Poor', 'Medium', 'Excellent'],
-        'memory_capability': ['Poor', 'Medium', 'Excellent'],
-        'interested_subjects': [
-            'Computer Architecture', 'IOT', 'Management',
-            'Mathematics', 'Networks', 'Parallel Computing',
-            'Programming', 'Software Engineering',
-        ],
-        'interested_career': [
-            'Business Process Analyst', 'Cloud Computing',
-            'Database Developer', 'Developer', 'Security',
-            'System Developer', 'Testing', 'Web Developer',
-        ],
-        'company_type': [
-            'BPA', 'Cloud Services', 'Finance',
-            'Product Development', 'SAaS Services',
-            'Sales and Marketing', 'Service Based',
-            'Testing and Maintenance', 'Web Services',
-        ],
-        'senior_elder_advise': ['Yes', 'No'],
-        'book_general_genre': [
-            'Action and Adventure', 'Autobiographies',
-            'Comedies', 'Comics', 'Cookbooks', 'Diaries',
-            'Drama', 'Encyclopedias', 'Fantasy', 'Fiction',
-            'Guide', 'Health', 'History', 'Horror',
-            'Journals', 'Math', 'Maths', 'Mystery',
-            'Poetry', 'Prayer books', 'Religion-Spirituality',
-            'Romance', 'Satire', 'Science', 'Science fiction',
-            'Self help', 'Series', 'Travel', 'Trilogy',
-        ],
-        'management_technical': ['Management', 'Technical'],
-        'hard_smart_worker': ['Hard Worker', 'Smart Worker', 'Both'],
     }
 
     # ─── Career Labels ──────────────────────────────────────────────
     CAREER_LABELS = [
-        'Applications Developer',
-        'Business Analyst',
-        'CRM Technical Developer',
-        'Cloud Computing Engineer',
-        'Cyber Security Specialist',
-        'Data Scientist',
-        'Database Administrator',
-        'Network Engineer',
-        'Project Manager',
-        'Software Developer',
-        'Software Tester',
-        'Systems Architect',
-        'Technical Writer',
-        'UX Designer',
-        'Web Developer',
+        'AI Researcher', 'Accountant', 'Acoustics Specialist', 'Actuary',
+        'Advertising Manager', 'Aerospace Engineer', 'Analytical Chemist',
+        'Animator', 'Architect', 'Architectural Technologist', 'Art Director',
+        'Art Therapist', 'Artist', 'Astronomer', 'Biochemist', 'Biologist',
+        'Biomedical Engineer', 'Biotechnologist', 'Brand Manager',
+        'Chemical Engineer', 'Chemist', 'Civil Engineer', 'Clinical Psychologist',
+        'Composer', 'Conductor', 'Construction Manager', 'Counselor',
+        'Credit Analyst', 'Curriculum Developer', 'Cybersecurity Analyst',
+        'Data Scientist', 'Dentist', 'Digital Marketing Specialist', 'Doctor',
+        'Ecologist', 'Education Administrator', 'Electrical Engineer',
+        'Entrepreneur', 'Financial Advisor', 'Financial Analyst',
+        'Financial Controller', 'Fluid Mechanics Engineer', 'Forensic Psychologist',
+        'Game Developer', 'Geneticist', 'Graphic Designer',
+        'Human Resources Specialist', 'Illustrator',
+        'Industrial-Organizational Psychologist', 'Inorganic Chemist',
+        'Interior Designer', 'Investment Banker', 'Judge', 'Landscape Architect',
+        'Lawyer', 'Legal Analyst', 'Legal Consultant', 'Legal Secretary',
+        'Manager', 'Market Research Analyst', 'Marketing Manager',
+        'Marketing Specialist', 'Mechanical Engineer', 'Microbiologist',
+        'Music Teacher', 'Music Therapist', 'Musician', 'Nuclear Physicist',
+        'Nurse', 'Organic Chemist', 'Paralegal', 'Pharmacist', 'Physical Chemist',
+        'Physician Assistant', 'Physicist', 'Principal', 'Psychologist',
+        'Quantum Physicist', 'Risk Analyst', 'School Counselor',
+        'School Psychologist', 'Social Media Manager', 'Software Developer',
+        'Sound Engineer', 'Special Education Teacher', 'Surgeon', 'Teacher',
+        'Urban Planner', 'Web Developer', 'Zoologist'
     ]
 
     # ─── Logging ────────────────────────────────────────────────────

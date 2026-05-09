@@ -8,6 +8,7 @@ Provides:
 - XGBoost vs SHAP feature importance comparison
 """
 
+import os
 import uuid
 import threading
 from pathlib import Path
@@ -41,6 +42,8 @@ class SHAPExplainer:
         self._background = None
         self._feature_names: List[str] = []
         self._loaded = False
+        self._last_shap_values = None
+        self._last_X = None
 
     @classmethod
     def get_instance(cls) -> 'SHAPExplainer':
@@ -63,7 +66,7 @@ class SHAPExplainer:
             raise FileNotFoundError(f"Background data not found: {Config.SHAP_BACKGROUND_PATH}")
 
         self._model = joblib.load(Config.MODEL_PATH)
-        self._background = np.load(Config.SHAP_BACKGROUND_PATH)
+        self._background = np.load(Config.SHAP_BACKGROUND_PATH)[:Config.SHAP_BACKGROUND_SIZE]
 
         with open(Config.FEATURE_SCHEMA_PATH, 'r') as f:
             schema = json.load(f)
@@ -74,10 +77,18 @@ class SHAPExplainer:
         logger.info(f"SHAP explainer initialized (background shape: {self._background.shape})")
 
     def compute_shap_values(self, X: np.ndarray):
-        """Compute SHAP values for input X."""
+        """Compute SHAP values for input X with caching."""
         if not self._loaded:
             raise RuntimeError("SHAP explainer not initialized.")
-        return self._explainer(X)
+        
+        # Simple cache to avoid re-computing for same input in one request
+        if self._last_X is not None and np.array_equal(X, self._last_X):
+            return self._last_shap_values
+            
+        shap_values = self._explainer(X)
+        self._last_X = X.copy()
+        self._last_shap_values = shap_values
+        return shap_values
 
     def global_summary_plot(self, X_sample: Optional[np.ndarray] = None) -> Path:
         """
@@ -130,7 +141,7 @@ class SHAPExplainer:
             prediction_id = str(uuid.uuid4())[:8]
 
         logger.info(f"Generating SHAP waterfall plot (id={prediction_id})...")
-        shap_values = self._explainer(X_single)
+        shap_values = self.compute_shap_values(X_single)
 
         Config.SHAP_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
         save_path = Config.SHAP_PLOTS_DIR / f'shap_waterfall_{prediction_id}.png'
@@ -151,6 +162,36 @@ class SHAPExplainer:
 
         logger.info(f"Waterfall plot saved: {save_path}")
         return save_path
+
+    def get_local_interpretations(self, X_single: np.ndarray) -> List[dict]:
+        """
+        Get the top influential features and their SHAP impacts for a single prediction.
+        Returns a list of dicts: [{'feature': 'Math', 'impact': 12.5}, ...]
+        """
+        shap_values = self.compute_shap_values(X_single)
+        
+        # For multiclass, use the predicted class
+        if len(shap_values.shape) == 3:
+            predicted_class = np.argmax(shap_values.values[0].sum(axis=0))
+            sv_values = shap_values.values[0, :, predicted_class]
+        else:
+            sv_values = shap_values.values[0]
+
+        # Calculate percentages based on sum of absolute SHAP values
+        total_impact = np.sum(np.abs(sv_values)) + 1e-10
+        
+        interpretations = []
+        for i, val in enumerate(sv_values):
+            if val != 0:
+                impact_pct = (val / total_impact) * 100
+                interpretations.append({
+                    'feature': self._feature_names[i].replace('_', ' ').title(),
+                    'impact': impact_pct
+                })
+        
+        # Sort by absolute impact descending
+        interpretations.sort(key=lambda x: abs(x['impact']), reverse=True)
+        return interpretations
 
     def feature_importance_comparison(self) -> Path:
         """

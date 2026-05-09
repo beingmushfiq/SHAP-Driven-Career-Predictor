@@ -1,53 +1,48 @@
 {% extends 'predictor_app/base.html' %}
-
-{% block title %}Home | Career Predictor{% endblock %}
+{% load static %}
 
 {% block content %}
-<div class="row align-items-center min-vh-75">
-    <div class="col-lg-6">
-        <h1 class="display-3 fw-bold mb-4">
-            Predict Your Future with <span style="background: var(--accent-gradient); -webkit-background-clip: text; -webkit-fill-color: transparent; -webkit-text-fill-color: transparent;">Explainable AI</span>
-        </h1>
-        <p class="lead text-secondary mb-5">
-            Analyze your academic performance and soft skills using our state-of-the-art XGBoost model, with localized SHAP explanations to understand the 'why' behind every prediction.
-        </p>
-        <div class="d-flex gap-3">
-            <a href="{% url 'predict' %}" class="btn btn-primary btn-lg">Get Started</a>
-            <a href="{% url 'analysis' %}" class="btn btn-outline-light btn-lg">View Global Insights</a>
+<div class="container d-flex flex-column justify-content-center align-items-center text-center" style="min-height: calc(100vh - 200px);">
+    
+    <div class="glass-card p-5" style="max-width: 800px; width: 100%;">
+        
+        <!-- Tech Pills -->
+        <div class="d-flex flex-wrap justify-content-center gap-3 mb-4 delay-1" style="animation: fadeSlideUp 0.8s ease-out;">
+            <span class="tech-pill purple">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                XGBoost
+            </span>
+            <span class="tech-pill cyan">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                SHAP Explanation
+            </span>
+            <span class="tech-pill green">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                Explainable AI
+            </span>
+            <span class="tech-pill text-accent">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                Career Intelligence
+            </span>
         </div>
-    </div>
-    <div class="col-lg-6 mt-5 mt-lg-0">
-        <div class="glass-card text-center">
-            <div class="mb-4">
-                <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-info">
-                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                    <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-                </svg>
-            </div>
-            <h3>Localized Career Prediction</h3>
-            <p class="text-secondary">We use 17+ academic and soft-skill features to provide high-accuracy career recommendations tailored to your profile.</p>
-        </div>
-    </div>
-</div>
 
-<div class="row mt-5 pt-5">
-    <div class="col-md-4 mb-4">
-        <div class="glass-card h-100">
-            <h4 class="text-info mb-3">XGBoost Engine</h4>
-            <p class="text-secondary">High-performance gradient boosting classifier trained on localized academic datasets for superior predictive accuracy.</p>
+        <!-- Headings -->
+        <h1 class="display-4 fw-black mb-3 delay-2 gradient-text" style="animation: fadeSlideUp 1s ease-out; font-weight: 900; letter-spacing: -1px;">
+            Predict Your Future<br>with Machine Learning
+        </h1>
+        
+        <p class="lead text-secondary mb-5 delay-3" style="animation: fadeSlideUp 1.2s ease-out; max-width: 600px; margin: 0 auto; font-size: 1.15rem;">
+            AI-powered career guidance with transparent SHAP explainability.
+        </p>
+
+        <!-- CTA -->
+        <div class="delay-4" style="animation: fadeSlideUp 1.4s ease-out;">
+            <a href="{% url 'predict' %}" class="btn btn-glow btn-lg px-5 py-3 fs-5" style="border-radius: 100px;">
+                Get Started
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" class="ms-2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+            </a>
         </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="glass-card h-100">
-            <h4 class="text-info mb-3">SHAP Explanations</h4>
-            <p class="text-secondary">No black-box predictions. Every result comes with a waterfall plot showing which features pushed the decision towards a specific career.</p>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="glass-card h-100">
-            <h4 class="text-info mb-3">Data Driven</h4>
-            <p class="text-secondary">Comprehensive analysis covering logical reasoning, coding skills, public speaking, and self-learning capabilities.</p>
-        </div>
+        
     </div>
 </div>
 {% endblock %}

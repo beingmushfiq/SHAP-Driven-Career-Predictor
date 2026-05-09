@@ -1,63 +1,42 @@
 {% extends 'predictor_app/base.html' %}
-
-{% block title %}Global Analysis | Career Predictor{% endblock %}
+{% load static %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="text-center mb-5">
-            <h2 class="display-5 fw-bold">Global Feature Importance Analysis</h2>
-            <p class="text-secondary lead">Understand what matters most in career prediction across the entire population.</p>
-        </div>
+<div class="container pb-5">
+    
+    <div class="text-center mb-5 delay-1" style="animation: fadeSlideUp 0.6s ease-out;">
+        <span class="section-label">System Intelligence</span>
+        <h2 class="display-5 fw-bold mb-3 gradient-text">Global SHAP Analysis</h2>
+        <p class="text-secondary lead">Discover how the XGBoost model weighs different features across all predictions.</p>
+    </div>
 
-        <div class="glass-card mb-5">
-            <h3 class="fw-bold mb-4">SHAP Global Summary</h3>
-            <p class="text-secondary mb-4">
-                This plot shows the mean absolute SHAP value for each feature. Features with higher values have a larger impact on the model's predictions overall.
-            </p>
-            <div class="text-center bg-white rounded p-4 mb-2 shadow-sm overflow-hidden">
-                <img src="{{ summary_url }}" alt="Global SHAP Summary" class="img-fluid rounded plot-zoom">
-            </div>
-        </div>
-
-        <div class="glass-card mb-5">
-            <h3 class="fw-bold mb-4">XGBoost vs SHAP Comparison</h3>
-            <p class="text-secondary mb-4">
-                Comparing built-in XGBoost weight importance (how often a feature is used to split) with SHAP magnitude (the actual impact on output). 
-                Note how soft skills compare to academic scores.
-            </p>
-            <div class="text-center bg-white rounded p-4 mb-2 shadow-sm overflow-hidden">
-                <img src="{{ comparison_url }}" alt="Feature Importance Comparison" class="img-fluid rounded plot-zoom">
-            </div>
-        </div>
-
-        <style>
-            .plot-zoom {
-                transition: transform 0.5s ease;
-                cursor: zoom-in;
-            }
-            .plot-zoom:hover {
-                transform: scale(1.015);
-            }
-        </style>
-
-        <div class="glass-card mb-5">
-            <h3 class="fw-bold mb-4">Key Insights</h3>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <div class="p-3 border border-secondary rounded h-100">
-                        <h5 class="text-info">Dominant Features</h5>
-                        <p class="text-secondary small">Based on our analysis, features like <strong>Coding Skills</strong> and <strong>Logical Quotient</strong> often have the highest global impact, but soft skills like <strong>Public Speaking</strong> are critical for management roles.</p>
-                    </div>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <div class="p-3 border border-secondary rounded h-100">
-                        <h5 class="text-info">Localized Variance</h5>
-                        <p class="text-secondary small">While global trends exist, SHAP reveals that for specific individuals, a single "niche" certification can completely shift the predicted career path, demonstrating the model's non-linear intelligence.</p>
-                    </div>
-                </div>
-            </div>
+    <div class="glass-card mb-5 delay-2" style="animation: fadeSlideUp 0.8s ease-out;">
+        <h3 class="fw-bold mb-4 d-flex align-items-center gap-2">
+            <svg width="24" height="24" fill="none" stroke="var(--accent-purple)" stroke-width="2" viewBox="0 0 24 24"><path d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            Global Feature Impact
+        </h3>
+        <p class="text-secondary mb-4">
+            This summary plot shows the relative importance of all features in our dataset. The length of the bar represents the average impact (magnitude of SHAP value) that a feature has on model output.
+        </p>
+        
+        <div class="bg-tertiary rounded p-2 text-center" style="background: var(--bg-secondary);">
+            <img src="{{ summary_url }}" alt="Global Summary Plot" class="img-fluid rounded" style="mix-blend-mode: normal;">
         </div>
     </div>
+
+    <div class="glass-card delay-3" style="animation: fadeSlideUp 1s ease-out;">
+        <h3 class="fw-bold mb-4 d-flex align-items-center gap-2">
+            <svg width="24" height="24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            Model Explanations Compared
+        </h3>
+        <p class="text-secondary mb-4">
+            A comparison between XGBoost's native feature importance metric (Gain/Weight) and SHAP values. SHAP provides a more consistent and theoretically grounded measure of feature contribution based on cooperative game theory.
+        </p>
+        
+        <div class="bg-tertiary rounded p-2 text-center" style="background: var(--bg-secondary);">
+            <img src="{{ comparison_url }}" alt="Feature Comparison Plot" class="img-fluid rounded" style="mix-blend-mode: normal;">
+        </div>
+    </div>
+
 </div>
 {% endblock %}

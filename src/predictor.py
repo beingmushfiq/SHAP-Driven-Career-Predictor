@@ -89,6 +89,14 @@ class CareerPredictor:
         """Predict career from form data. Returns (label, probabilities)."""
         X = self.preprocess_input(form_data)
         proba = self._model.predict_proba(X)[0]
+        
+        # Apply sharpening to boost top choice confidence for UX calibration
+        # This makes the top prediction more dominant as requested
+        sharpening = getattr(Config, 'PREDICTION_SHARPENING', 1.0)
+        if sharpening != 1.0:
+            proba = np.power(proba, sharpening)
+            proba = proba / (np.sum(proba) + 1e-15)
+            
         predicted_class = np.argmax(proba)
         career_label = self._target_encoder.inverse_transform([predicted_class])[0]
         logger.info(f"Prediction: {career_label} (confidence: {proba[predicted_class]:.2%})")

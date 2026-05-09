@@ -1,70 +1,164 @@
 {% extends 'predictor_app/base.html' %}
+{% load static %}
 
-{% block title %}Result | Career Predictor{% endblock %}
+{% block extra_css %}
+<style>
+    .result-card {
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        transition: var(--transition-smooth);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+    .result-card.primary-result {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05));
+        border-color: rgba(59, 130, 246, 0.2);
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.1);
+    }
+    .result-card.primary-result::after {
+        content: 'TOP MATCH';
+        position: absolute;
+        top: 15px; right: -30px;
+        background: var(--gradient-primary);
+        color: white; font-size: 0.7rem; font-weight: bold;
+        padding: 4px 30px; transform: rotate(45deg);
+        letter-spacing: 1px;
+    }
+    .result-card:hover {
+        transform: translateY(-5px);
+        border-color: rgba(59, 130, 246, 0.3);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+    }
+    
+    .probability-badge {
+        font-size: 1.5rem;
+        font-weight: 800;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .shap-container {
+        background: #f8fafc;
+        border-radius: var(--radius-lg);
+        padding: 1rem;
+        border: 1px solid var(--glass-border);
+    }
+    .shap-container img {
+        width: 100%;
+        height: auto;
+        border-radius: var(--radius-md);
+        mix-blend-mode: multiply; /* Helps blend white background of plots with container */
+    }
+
+    .interpretation-list {
+        list-style: none; padding: 0; margin: 0;
+    }
+    .interpretation-list li {
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.8);
+        border-left: 3px solid var(--accent-blue);
+        margin-bottom: 0.8rem;
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        display: flex; gap: 1rem; align-items: flex-start;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+    .interpretation-list li.negative {
+        border-left-color: var(--accent-red);
+    }
+    .feature-val { font-weight: 600; color: var(--text-primary); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="text-center mb-5">
-            <span class="badge bg-info text-white mb-2 px-3 py-2 rounded-pill fw-bold">PREDICTION RESULT</span>
-            <h2 class="display-5 fw-bold">Your Ideal Career Path</h2>
-        </div>
+<div class="container pb-5">
+    
+    <!-- Header -->
+    <div class="text-center mb-5 delay-1" style="animation: fadeSlideUp 0.6s ease-out;">
+        <span class="section-label">Analysis Complete</span>
+        <h2 class="display-5 fw-bold mb-3 gradient-text">Your Predicted Paths</h2>
+        <p class="text-secondary lead">Based on your academic and behavioral profile, here are your most suited careers.</p>
+    </div>
 
-        <div class="glass-card text-center mb-5 p-5" style="border-left: 5px solid var(--accent-color);">
-            <h1 class="display-3 fw-bold mb-3 text-info">{{ career }}</h1>
-            <p class="lead text-secondary">We are <span class="text-primary fw-bold">{{ confidence }}</span> confident about this recommendation.</p>
-            
-            <div class="row justify-content-center mt-5">
-                <div class="col-md-6">
-                    <h5 class="mb-3 text-secondary">Top 3 Alternatives</h5>
-                    <div class="list-group list-group-flush">
-                        {% for label, prob in top_predictions %}
-                            <div class="list-group-item bg-transparent text-secondary border-secondary d-flex justify-content-between align-items-center">
-                                {{ label }}
-                                <span class="badge bg-secondary">{{ prob|floatformat:2 }}</span>
+    <!-- Top Predictions -->
+    <div class="row g-4 mb-5 delay-2" style="animation: fadeSlideUp 0.8s ease-out;">
+        {% for pred in predictions|slice:":3" %}
+        <div class="col-md-4">
+            <div class="result-card {% if forloop.first %}primary-result{% endif %}">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="text-muted text-uppercase small fw-bold">Rank #{{ forloop.counter }}</div>
+                    <div class="probability-badge">{{ pred.probability }}%</div>
+                </div>
+                <h4 class="fw-bold mb-0 text-primary">{{ pred.career }}</h4>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- SHAP Explainability Section -->
+    <div class="glass-card mb-5 delay-3" style="animation: fadeSlideUp 1s ease-out;">
+        <div class="row">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <svg width="24" height="24" fill="none" stroke="var(--accent-blue)" stroke-width="2" viewBox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <h3 class="fw-bold mb-0 text-primary">Why this prediction?</h3>
+                </div>
+                <p class="text-secondary mb-4">
+                    Our AI models don't just guess. Using SHAP (SHapley Additive exPlanations) values from Game Theory, we break down exactly how your skills pushed the model towards predicting <strong>{{ predictions.0.career }}</strong>.
+                </p>
+                
+                <h5 class="fw-bold text-primary mb-3">Key Influencers:</h5>
+                <ul class="interpretation-list">
+                    {% for feat in shap_data.interpretations|slice:":5" %}
+                        <li class="{% if feat.impact < 0 %}negative{% endif %}">
+                            <svg width="20" height="20" fill="none" class="mt-1 flex-shrink-0" stroke="{% if feat.impact > 0 %}var(--accent-green){% else %}var(--accent-red){% endif %}" stroke-width="2" viewBox="0 0 24 24">
+                                {% if feat.impact > 0 %}
+                                    <path d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                                {% else %}
+                                    <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                                {% endif %}
+                            </svg>
+                            <div>
+                                Your <span class="text-accent">{{ feat.feature }}</span> score 
+                                contributed <strong class="{% if feat.impact > 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if feat.impact > 0 %}+{% endif %}{{ feat.impact|floatformat:2 }}%
+                                </strong> towards this career match.
                             </div>
-                        {% endfor %}
-                    </div>
+                        </li>
+                    {% empty %}
+                        <li>Analysis data not fully available.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="shap-container h-100 d-flex flex-column justify-content-center align-items-center">
+                    <h6 class="text-muted mb-3 text-uppercase fw-bold letter-spacing-1">SHAP Waterfall Plot</h6>
+                    {% if shap_data.plot_url %}
+                        <img src="{{ shap_data.plot_url }}" alt="SHAP Explainability Plot" class="img-fluid">
+                        <small class="text-muted mt-3 text-center">Blue pushes prediction lower, Red pushes prediction higher.</small>
+                    {% else %}
+                        <div class="text-muted text-center py-5">
+                            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" class="mb-3 opacity-50" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <p>SHAP visualization could not be generated.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
-
-        <div class="glass-card mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="fw-bold mb-0">Explainable Analysis (SHAP)</h3>
-                <span class="badge border border-info text-info">Localized Interpretation</span>
-            </div>
-            
-            <p class="text-secondary mb-4">
-                The waterfall plot below illustrates how each of your input features contributed to the final prediction. 
-                <span class="text-info">Positive values (red)</span> pushed the model towards this career, while 
-                <span class="text-danger">negative values (blue)</span> pushed it away.
-            </p>
-
-            <div class="text-center bg-white rounded p-3 mb-4 shadow-sm overflow-hidden">
-                <img src="{{ shap_plot_url }}" alt="SHAP Waterfall Plot" class="img-fluid rounded shap-image">
-            </div>
-
-            <style>
-                .shap-image {
-                    transition: transform 0.5s ease;
-                    cursor: zoom-in;
-                }
-                .shap-image:hover {
-                    transform: scale(1.02);
-                }
-            </style>
-
-            <div class="alert alert-info bg-light border-info text-dark py-3">
-                <h5 class="text-info"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> How to read this?</h5>
-                The features at the top had the most influence. The <strong>f(x)</strong> value represents the model's confidence before softmax, and the base value <strong>E[f(x)]</strong> is the average prediction across the background dataset.
-            </div>
-        </div>
-
-        <div class="text-center mb-5">
-            <a href="{% url 'predict' %}" class="btn btn-outline-light btn-lg me-3">New Assessment</a>
-            <a href="{% url 'analysis' %}" class="btn btn-primary btn-lg">View Global Insights</a>
-        </div>
     </div>
+    
+    <div class="text-center delay-4" style="animation: fadeSlideUp 1.2s ease-out;">
+        <a href="{% url 'predict' %}" class="btn btn-outline-glass px-4 py-2">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" class="me-2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            Retake Assessment
+        </a>
+    </div>
+
 </div>
 {% endblock %}

@@ -2,84 +2,90 @@ from django import forms
 from src.config import Config
 
 class CareerPredictionForm(forms.Form):
-    # Numerical features
-    logical_quotient = forms.IntegerField(
-        label="Logical Quotient (1-10)",
-        min_value=1, max_value=10,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    # Academic & Field (Step 1)
+    field = forms.ChoiceField(
+        label="Primary Field of Study",
+        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['field']],
+        widget=forms.Select(attrs={'class': 'form-select select2-basic', 'required': 'required'})
     )
-    hackathons = forms.IntegerField(
-        label="Number of Hackathons (0-10)",
+    gpa = forms.FloatField(
+        label="CGPA (Out of 4.0)",
+        min_value=2.0, max_value=4.0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'e.g. 3.75', 'required': 'required'})
+    )
+    field_specific_courses = forms.IntegerField(
+        label="Field Specific Courses (0-10)",
         min_value=0, max_value=10,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'required': 'required'})
     )
+
+    # Experience & Activities (Step 2)
+    internships = forms.IntegerField(
+        label="Number of Internships (0-5)",
+        min_value=0, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'required': 'required'})
+    )
+    projects = forms.IntegerField(
+        label="Number of Projects (0-10)",
+        min_value=0, max_value=10,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'required': 'required'})
+    )
+    extracurricular_activities = forms.IntegerField(
+        label="Extracurricular Activities (0-10)",
+        min_value=0, max_value=10,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'required': 'required'})
+    )
+    leadership_positions = forms.ChoiceField(
+        label="Leadership Experience",
+        choices=[(0, 'No'), (1, 'Yes')],
+        widget=forms.Select(attrs={'class': 'form-select', 'required': 'required'})
+    )
+    research_experience = forms.ChoiceField(
+        label="Research Experience",
+        choices=[(0, 'No'), (1, 'Yes')],
+        widget=forms.Select(attrs={'class': 'form-select', 'required': 'required'})
+    )
+    industry_certifications = forms.ChoiceField(
+        label="Industry Certifications",
+        choices=[(0, 'No'), (1, 'Yes')],
+        widget=forms.Select(attrs={'class': 'form-select', 'required': 'required'})
+    )
+
+    # Core Skills (Step 3) - Rating 0-5
     coding_skills = forms.IntegerField(
-        label="Coding Skills (1-10)",
-        min_value=1, max_value=10,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+        label="Coding Skills (0-5)",
+        min_value=0, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Rate 0-5', 'required': 'required'})
     )
-    public_speaking = forms.IntegerField(
-        label="Public Speaking (1-10)",
-        min_value=1, max_value=10,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    communication_skills = forms.IntegerField(
+        label="Communication Skills (0-5)",
+        min_value=0, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Rate 0-5', 'required': 'required'})
+    )
+    problem_solving_skills = forms.IntegerField(
+        label="Problem Solving Skills (0-5)",
+        min_value=0, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Rate 0-5', 'required': 'required'})
+    )
+    teamwork_skills = forms.IntegerField(
+        label="Teamwork Skills (0-5)",
+        min_value=0, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Rate 0-5', 'required': 'required'})
     )
 
-    cgpa = forms.FloatField(
-        label="CGPA (0.0-10.0)",
-        min_value=0.0, max_value=10.0,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    # Professional Skills (Step 4) - Rating 0-5
+    analytical_skills = forms.IntegerField(
+        label="Analytical Skills (0-5)",
+        min_value=0, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Rate 0-5', 'required': 'required'})
     )
-
-    # Categorical features - MultipleChoiceField for multi-select support
-    self_learning = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['self_learning']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
+    presentation_skills = forms.IntegerField(
+        label="Presentation Skills (0-5)",
+        min_value=0, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Rate 0-5', 'required': 'required'})
     )
-    extra_courses = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['extra_courses']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    certifications = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['certifications']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    workshops = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['workshops']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    reading_writing_skills = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['reading_writing_skills']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    memory_capability = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['memory_capability']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    interested_subjects = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['interested_subjects']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    interested_career = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['interested_career']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    company_type = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['company_type']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    senior_elder_advise = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['senior_elder_advise']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    book_general_genre = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['book_general_genre']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    management_technical = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['management_technical']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
-    )
-    hard_smart_worker = forms.MultipleChoiceField(
-        choices=[(opt, opt) for opt in Config.CATEGORICAL_OPTIONS['hard_smart_worker']],
-        widget=forms.Select(attrs={'class': 'form-select select-ticked-multi', 'multiple': 'multiple'})
+    networking_skills = forms.IntegerField(
+        label="Networking Skills (0-5)",
+        min_value=0, max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Rate 0-5', 'required': 'required'})
     )

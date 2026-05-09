@@ -1,122 +1,458 @@
 {% extends 'predictor_app/base.html' %}
+{% load static %}
 
-{% block title %}Predict | Career Predictor{% endblock %}
+{% block extra_css %}
+<style>
+    /* Wizard Steps */
+    .step-connector {
+        flex-grow: 1;
+        height: 2px;
+        background: var(--bg-tertiary);
+        margin: 0 15px;
+        position: relative;
+        transition: var(--transition-smooth);
+    }
+    .step-connector::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 50%;
+        width: 8px;
+        height: 8px;
+        border-top: 2px solid var(--bg-tertiary);
+        border-right: 2px solid var(--bg-tertiary);
+        transform: translateY(-50%) rotate(45deg);
+        transition: var(--transition-smooth);
+    }
+    .step-connector.active {
+        background: var(--accent-blue);
+    }
+    .step-connector.active::after {
+        border-color: var(--accent-blue);
+    }
+
+    .step-indicator {
+        width: 42px;
+        height: 42px;
+        background: #fff;
+        border: 2px solid var(--bg-tertiary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: var(--text-muted);
+        position: relative;
+        z-index: 1;
+        transition: var(--transition-smooth);
+    }
+    .step-indicator.active {
+        background: #fff;
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+    }
+    .step-indicator.completed {
+        background: var(--accent-blue);
+        border-color: var(--accent-blue);
+        color: white;
+    }
+    .step-title {
+        position: absolute;
+        top: 52px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        font-weight: 700;
+        transition: var(--transition-smooth);
+    }
+    .step-indicator.active .step-title {
+        color: var(--accent-blue);
+    }
+
+    .wizard-content { display: none; animation: fadeIn 0.4s ease-in-out; }
+    .wizard-content.active { display: block; }
+    
+    .field-group {
+        background: #fff;
+        border: 1px solid var(--glass-border);
+        padding: 1.5rem;
+        border-radius: var(--radius-lg);
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        transition: var(--transition-smooth);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+    .field-group:hover {
+        border-color: var(--accent-blue);
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.08);
+        transform: translateY(-2px);
+    }
+    
+    /* Make standard inputs match Select2 height */
+    .form-control, .form-select {
+        min-height: 52px;
+        background: rgba(255, 255, 255, 0.8) !important;
+        border: 1px solid var(--glass-border) !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* Override Select2 multi-select height for UI */
+    .select2-container--default .select2-selection--multiple {
+        background: rgba(255, 255, 255, 0.8) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: var(--radius-md) !important;
+        min-height: 52px !important;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
+        
         <div class="text-center mb-5">
-            <h2 class="fw-bold">Career Assessment Form</h2>
-            <p class="text-secondary">Please provide accurate details for the most localized prediction.</p>
+            <span class="section-label">AI Analysis</span>
+            <h2 class="display-6 fw-bold mb-2">Build Your Profile</h2>
+            <p class="text-secondary">Provide your academic and behavioral data for an accurate prediction.</p>
         </div>
 
-        <form method="POST" class="glass-card shadow-lg mb-5">
-            {% csrf_token %}
+        <div class="glass-card mb-5">
             
-            <h4 class="mb-4 text-info">Core Cognitive & Technical Skills</h4>
-            <div class="row mb-4">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ form.logical_quotient.label }}</label>
-                    {{ form.logical_quotient }}
-                    {% if form.logical_quotient.errors %}
-                        <div class="text-danger small">{{ form.logical_quotient.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ form.coding_skills.label }}</label>
-                    {{ form.coding_skills }}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ form.hackathons.label }}</label>
-                    {{ form.hackathons }}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ form.public_speaking.label }}</label>
-                    {{ form.public_speaking }}
+            <!-- Wizard Headers -->
+            <div class="position-relative mb-5 pb-3" style="max-width: 700px; margin: 0 auto;">
+                <div class="d-flex flex-row justify-content-between align-items-center w-100">
+                    <div class="step-indicator active" id="indicator-1">
+                        1 <span class="step-title">Academic</span>
+                    </div>
+                    
+                    <div class="step-connector" id="connector-1"></div>
+                    
+                    <div class="step-indicator" id="indicator-2">
+                        2 <span class="step-title">Experience</span>
+                    </div>
+
+                    <div class="step-connector" id="connector-2"></div>
+
+                    <div class="step-indicator" id="indicator-3">
+                        3 <span class="step-title">Core Skills</span>
+                    </div>
+
+                    <div class="step-connector" id="connector-3"></div>
+
+                    <div class="step-indicator" id="indicator-4">
+                        4 <span class="step-title">Professional</span>
+                    </div>
                 </div>
             </div>
 
-            <hr class="my-4 opacity-10">
+            <!-- Form -->
+            <form method="POST" id="prediction-form" action="{% url 'predict' %}">
+                {% csrf_token %}
+                
+                <!-- STEP 1: Academic & Field -->
+                <div class="wizard-content active" id="step-1">
+                    <h4 class="mb-4 d-flex align-items-center gap-3 fw-bold">
+                        <div class="p-2 rounded-3 bg-primary-subtle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                            <svg width="24" height="24" fill="none" stroke="var(--accent-blue)" stroke-width="2" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"></path><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path></svg>
+                        </div>
+                        Academic Background
+                    </h4>
+                    
+                    <div class="field-group">
+                        <label class="form-label">{{ form.field.label }}</label>
+                        {{ form.field }}
+                        <div class="form-text">Choose your primary field of study.</div>
+                    </div>
+                    <div class="field-group">
+                        <label class="form-label">{{ form.gpa.label }}</label>
+                        {{ form.gpa }}
+                    </div>
+                    <div class="field-group">
+                        <label class="form-label">{{ form.field_specific_courses.label }}</label>
+                        {{ form.field_specific_courses }}
+                    </div>
+                    
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="button" class="btn btn-glow px-4" onclick="nextStep(1)">Experience &rarr;</button>
+                    </div>
+                </div>
 
-            <h4 class="mb-4 text-info">Academic & Learning Profile</h4>
-            <div class="row mb-4">
-                <div class="col-md-12 mb-3">
-                    <label class="form-label">{{ form.cgpa.label }}</label>
-                    {{ form.cgpa }}
-                    {% if form.cgpa.errors %}
-                        <div class="text-danger small">{{ form.cgpa.errors }}</div>
-                    {% endif %}
+                <!-- STEP 2: Experience & Activities -->
+                <div class="wizard-content" id="step-2">
+                    <h4 class="mb-4 d-flex align-items-center gap-3 fw-bold">
+                        <div class="p-2 rounded-3 bg-info-subtle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                            <svg width="24" height="24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" viewBox="0 0 24 24"><path d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        </div>
+                        Experience & Activities
+                    </h4>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="form-label">{{ form.internships.label }}</label>
+                                {{ form.internships }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="form-label">{{ form.projects.label }}</label>
+                                {{ form.projects }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="form-label">{{ form.extracurricular_activities.label }}</label>
+                        {{ form.extracurricular_activities }}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="field-group">
+                                <label class="form-label">{{ form.leadership_positions.label }}</label>
+                                {{ form.leadership_positions }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="field-group">
+                                <label class="form-label">{{ form.research_experience.label }}</label>
+                                {{ form.research_experience }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="field-group">
+                                <label class="form-label">{{ form.industry_certifications.label }}</label>
+                                {{ form.industry_certifications }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" class="btn btn-outline-glass px-4" onclick="prevStep(2)">&larr; Academic</button>
+                        <button type="button" class="btn btn-glow px-4" onclick="nextStep(2)">Core Skills &rarr;</button>
+                    </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ form.self_learning.label }}</label>
-                    {{ form.self_learning }}
+
+                <!-- STEP 3: Core Skills -->
+                <div class="wizard-content" id="step-3">
+                    <h4 class="mb-4 d-flex align-items-center gap-3 fw-bold">
+                        <div class="p-2 rounded-3 bg-secondary-subtle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;" style="background-color: rgba(139, 92, 246, 0.1) !important;">
+                            <svg width="24" height="24" fill="none" stroke="var(--accent-purple)" stroke-width="2" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                        </div>
+                        Core Skills Proficiency
+                    </h4>
+                    
+                    <div class="field-group">
+                        <label class="form-label">{{ form.coding_skills.label }}</label>
+                        {{ form.coding_skills }}
+                        <div class="form-text">Rate your technical coding ability (0-5).</div>
+                    </div>
+                    <div class="field-group">
+                        <label class="form-label">{{ form.communication_skills.label }}</label>
+                        {{ form.communication_skills }}
+                    </div>
+                    <div class="field-group">
+                        <label class="form-label">{{ form.problem_solving_skills.label }}</label>
+                        {{ form.problem_solving_skills }}
+                    </div>
+                    <div class="field-group">
+                        <label class="form-label">{{ form.teamwork_skills.label }}</label>
+                        {{ form.teamwork_skills }}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" class="btn btn-outline-glass px-4" onclick="prevStep(3)">&larr; Experience</button>
+                        <button type="button" class="btn btn-glow px-4" onclick="nextStep(3)">Professional &rarr;</button>
+                    </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ form.extra_courses.label }}</label>
-                    {{ form.extra_courses }}
+
+                <!-- STEP 4: Professional Skills -->
+                <div class="wizard-content" id="step-4">
+                    <h4 class="mb-4 d-flex align-items-center gap-3 fw-bold">
+                        <div class="p-2 rounded-3 bg-success-subtle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                            <svg width="24" height="24" fill="none" stroke="var(--accent-green)" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        </div>
+                        Professional Competencies
+                    </h4>
+                    
+                    <div class="field-group">
+                        <label class="form-label">{{ form.analytical_skills.label }}</label>
+                        {{ form.analytical_skills }}
+                    </div>
+                    <div class="field-group">
+                        <label class="form-label">{{ form.presentation_skills.label }}</label>
+                        {{ form.presentation_skills }}
+                    </div>
+                    <div class="field-group">
+                        <label class="form-label">{{ form.networking_skills.label }}</label>
+                        {{ form.networking_skills }}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="button" class="btn btn-outline-glass px-4" onclick="prevStep(4)">&larr; Skills</button>
+                        <button type="submit" class="btn btn-glow px-5" id="submit-btn">
+                            Predict Career
+                            <span class="spinner-border spinner-border-sm d-none ms-2" id="submit-spinner" role="status" aria-hidden="true"></span>
+                        </button>
+                    </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ form.certifications.label }}</label>
-                    {{ form.certifications }}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">{{ form.workshops.label }}</label>
-                    {{ form.workshops }}
-                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Wizard Navigation Logic
+    function nextStep(currentStep) {
+        // Validate current step before proceeding
+        const stepContainer = document.getElementById(`step-${currentStep}`);
+        const inputs = stepContainer.querySelectorAll('input, select, textarea');
+        let isValid = true;
+        
+        for (let input of inputs) {
+            if (!input.checkValidity()) {
+                input.reportValidity();
+                isValid = false;
+                break;
+            }
+        }
+        
+        if (!isValid) return;
+
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        document.getElementById(`step-${currentStep + 1}`).classList.add('active');
+        
+        document.getElementById(`indicator-${currentStep}`).classList.remove('active');
+        document.getElementById(`indicator-${currentStep}`).classList.add('completed');
+        document.getElementById(`indicator-${currentStep + 1}`).classList.add('active');
+        
+        // Update connector
+        if(currentStep < 4) {
+            document.getElementById(`connector-${currentStep}`).classList.add('active');
+        }
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function prevStep(currentStep) {
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        document.getElementById(`step-${currentStep - 1}`).classList.add('active');
+        
+        document.getElementById(`indicator-${currentStep}`).classList.remove('active');
+        document.getElementById(`indicator-${currentStep - 1}`).classList.remove('completed');
+        document.getElementById(`indicator-${currentStep - 1}`).classList.add('active');
+        
+        // Update connector
+        if(currentStep > 1) {
+            document.getElementById(`connector-${currentStep - 1}`).classList.remove('active');
+        }
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Form Submission Animation
+    document.getElementById('prediction-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = this;
+        const modal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        modal.show();
+        
+        // Extended to 5s to appreciate the stunning animation
+        setTimeout(() => {
+            form.submit();
+        }, 5000);
+    });
+</script>
+
+<style>
+    /* Very Cool Round Loading Animation */
+    .cool-round-loader {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto;
+    }
+    
+    .spinner-ring {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border: 8px solid rgba(59, 130, 246, 0.1);
+        border-top: 8px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+    }
+    
+    .spinner-inner-pulse {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px;
+        height: 40px;
+        background: var(--primary-gradient);
+        border-radius: 50%;
+        opacity: 0.6;
+        animation: innerPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes innerPulse {
+        0%, 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.4; }
+        50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+    }
+
+    .particle {
+        position: absolute;
+        width: 5px; height: 5px;
+        background: rgba(59, 130, 246, 0.3);
+        border-radius: 50%;
+        animation: particleFloat 4s infinite linear;
+        opacity: 0;
+    }
+
+    @keyframes particleFloat {
+        0% { transform: translateY(0) translateX(0); opacity: 0; }
+        50% { opacity: 0.6; }
+        100% { transform: translateY(-100px) translateX(20px); opacity: 0; }
+    }
+</style>
+
+<!-- Stunning Light Loading Modal -->
+<div class="modal fade" id="loadingModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 bg-white overflow-hidden shadow-lg" style="border-radius: 2.5rem;">
+            
+            <!-- Animated Background Particles -->
+            <div style="position: absolute; inset: 0; overflow: hidden; pointer-events: none; opacity: 0.5;">
+                <div class="particle" style="top: 80%; left: 20%; animation-delay: 0s;"></div>
+                <div class="particle" style="top: 70%; left: 50%; animation-delay: 1s;"></div>
+                <div class="particle" style="top: 90%; left: 80%; animation-delay: 2s;"></div>
+                <div class="particle" style="top: 60%; left: 30%; animation-delay: 0.5s;"></div>
             </div>
 
-            <hr class="my-4 opacity-10">
-
-            <h4 class="mb-4 text-info">Interests & Preferences</h4>
-            <div class="row mb-4">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Interested Subjects</label>
-                    {{ form.interested_subjects }}
+            <div class="modal-body p-5 text-center">
+                <div class="cool-round-loader mb-5">
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-inner-pulse"></div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Career Interest</label>
-                    {{ form.interested_career }}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Work Style</label>
-                    {{ form.hard_smart_worker }}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Track Preference</label>
-                    {{ form.management_technical }}
-                </div>
+                <h3 class="fw-bold text-dark mb-3">AI is working for the best outcome possible.</h3>
+                <p class="text-muted mb-0 fs-5">Thank you for your patience.</p>
             </div>
-
-            <hr class="my-4 opacity-10">
-
-            <h4 class="mb-4 text-info">Miscellaneous</h4>
-            <div class="row mb-4">
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Reading/Writing</label>
-                    {{ form.reading_writing_skills }}
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Memory Power</label>
-                    {{ form.memory_capability }}
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Preferred Company</label>
-                    {{ form.company_type }}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Reading Preference</label>
-                    {{ form.book_general_genre }}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Elder's Advise</label>
-                    {{ form.senior_elder_advise }}
-                </div>
-            </div>
-
-            <div class="d-grid mt-5">
-                <button type="submit" class="btn btn-primary btn-lg">Analyze & Predict Career</button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}
