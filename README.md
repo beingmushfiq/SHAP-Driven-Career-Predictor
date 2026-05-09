@@ -159,12 +159,3 @@ python manage.py runserver
 ## 🎓 Academic Implementation
 This project is an implementation of the thesis research:
 > **"SHAP-Driven Feature Importance Analysis of XGBoost for Explainable Localized Career Prediction Using Academic and Soft-Skill Data"**
-
----
-
-## 📄 License
-Distributed under the **MIT License**. See `LICENSE` for more information.
-
----
-
-**Developed for Varsity Presentation 2026** 🚀
