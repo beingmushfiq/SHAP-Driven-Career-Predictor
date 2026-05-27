@@ -21,9 +21,11 @@ FIELD_MAPPING = {
     'Music': ['Conductor', 'Music Teacher', 'Composer', 'Musician', 'Sound Engineer']
 }
 
+from src.config import Config
+
 def clean_and_relabel():
-    input_path = Path('data/raw/career_dataset_student.csv')
-    output_path = Path('data/raw/career_dataset_student_logical.csv')
+    input_path = Config.DATA_RAW_DIR / 'career_dataset_student.csv'
+    output_path = Config.DATA_RAW_DIR / 'career_dataset_student_logical.csv'
     
     print(f"Loading {input_path}...")
     df = pd.read_csv(input_path)
@@ -65,7 +67,7 @@ def clean_and_relabel():
     
     # Replace the original with the logical one
     # We'll keep a backup just in case
-    backup_path = Path('data/raw/career_dataset_student_original.csv')
+    backup_path = Config.DATA_RAW_DIR / 'career_dataset_student_original.csv'
     if not backup_path.exists():
         input_path.rename(backup_path)
         print(f"Original dataset backed up to {backup_path}")
