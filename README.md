@@ -1,41 +1,49 @@
 # 🎓 SHAP-Driven Career Predictor
-### Explainable AI for Future Career Guidance
+### Explainable AI & Multi-Model Architecture for Future Career Guidance
 
-[![Python](https://img.shields.io/badge/Python-3.14-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/Django-6.0-092E20.svg?style=flat-square&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![XGBoost](https://img.shields.io/badge/XGBoost-Latest-FF9900.svg?style=flat-square)](https://xgboost.ai/)
+[![RandomForest](https://img.shields.io/badge/RandomForest-Scikit--Learn-blue.svg?style=flat-square)](https://scikit-learn.org/)
 [![SHAP](https://img.shields.io/badge/SHAP-Explainable_AI-critical.svg?style=flat-square)](https://shap.readthedocs.io/)
-[![Tailwind](https://img.shields.io/badge/Modern_UI-Stunning_Animations-blueviolet.svg?style=flat-square)](#)
+[![Optuna](https://img.shields.io/badge/Optuna-Bayesian_Tuning-teal.svg?style=flat-square)](https://optuna.org/)
 
-A production-grade, academically rigorous platform for **Explainable Localized Career Prediction**. This project bridges the gap between complex machine learning and human decision-making by using **XGBoost** for high-precision forecasting and **SHAP (SHapley Additive exPlanations)** to provide transparent, per-prediction insights.
+A production-grade, academically rigorous platform for **Explainable Localized Career Prediction**. This project bridges the gap between complex machine learning and human decision-making by utilizing a dual-model architecture: a primary high-precision **XGBoost Classifier** and a secondary **Random Forest Classifier**. Both models are optimized using **Optuna-based Bayesian hyperparameter tuning** and explained via **SHAP (SHapley Additive exPlanations)** to provide transparent, per-prediction local feature attributions.
 
 ---
 
 ## 🚀 Vision & Problem Statement
 
-Standard career guidance systems are often "black boxes"—they give a prediction without explaining *why*. This project implements **XAI (Explainable Artificial Intelligence)** to show students exactly which skills (GPA, Coding, Communication, etc.) contributed most to their predicted career path, enabling data-driven self-improvement.
+Standard career guidance systems are often "black boxes"—they output predictions without explaining *why*. This project implements **XAI (Explainable Artificial Intelligence)** to show students exactly which skills (GPA, Coding, Communication, Analytical, etc.) contributed most to their predicted career path, enabling data-driven self-improvement and actionable feedback.
 
 ---
 
 ## 🌟 Key Features
 
-### 🧠 Predictive Intelligence
-- **XGBoost Classifier**: Optimized for tabular data with high-precision hyperparameter tuning (RandomizedSearchCV).
-- **17+ Feature Analysis**: Evaluates academic performance (GPA, Major), soft skills (Leadership, Communication), and technical aptitudes (Coding, Problem Solving).
+### 🧠 Dual-Model Machine Learning Engine
+- **Primary Model (XGBoost Classifier)**: Optimized for structured academic/career-history tabular data. Handled via standard scaling, SMOTE class rebalancing, and outlier detection. Achieved **100% accuracy** on the primary career dataset.
+- **Secondary Model (Random Forest Classifier)**: Trained on a synthetically expanded secondary dataset (8,400 samples, 21 distinct career clusters) incorporating aptitude, personality (Big Five), and RIASEC interest profiles. Achieved **93.75% accuracy**.
+- **Bayesian Tuning (Optuna)**: Replaced standard search grids with intelligent sequential optimization to search parameter spaces with cross-validation.
 
 ### 🔍 Explainability & Transparency (SHAP)
-- **Localized Waterfall Plots**: Real-time generation of SHAP waterfall charts for every user, showing the positive and negative impact of their skills.
-- **Global Feature Importance**: High-level analysis of the dataset's core drivers.
+- **Local Attribute Waterfall Plots**: Generates real-time, personalized SHAP waterfall charts for every user, mapping the positive and negative impact of individual skill metrics on the prediction.
+- **Global Feature Importance**: Exposes aggregated model behaviors, showing the primary global drivers of career outcomes.
+- **Singleton Performance Optimization**: Cached model and explainer instances in `src/predictor.py` and `src/explain.py` for sub-second, production-grade latency.
+
+### 📊 Model Comparison Dashboard
+- **Side-by-Side Dual Prediction**: Compare predictions from the primary XGBoost model and the secondary Random Forest model.
+- **Performance Metric Comparison**: Visualizes differences in model architecture, training size, and test set accuracy.
+- **Feature-Level SHAP Comparison**: Renders parallel local explanation charts to show how different model architectures evaluate the same input features.
+
+### 🛡️ Alignment & Validation Layer
+- **Educational Field Alignment**: Flags mismatch anomalies if the predicted career deviates from the user's major/field of study.
+- **Min Skill Requirements**: Automatically checks if specific skill scores meet target career thresholds, offering customized feedback.
+- **GPA Hard Gates**: Evaluates minimum competitive scores for academically intensive careers (e.g., Doctors, Legal Professionals).
 
 ### 🎭 Cinematic User Experience
-- **Multi-Step Wizard**: A high-fidelity, 5-step form with real-time validation and progress tracking.
-- **Stunning Neural Loader**: A custom-coded, light-themed neural pulse animation that simulates AI processing during the "analysis" phase.
-- **Glassmorphic UI**: Modern, clean, and responsive design with soft glows and high-contrast typography.
-
-### 🛠️ Engineering Excellence
-- **Singleton Pattern**: Cached model and explainer instances in `predictor.py` and `explain.py` for ultra-low latency.
-- **Schema Locking**: Automated `feature_schema.json` generation ensures the model never receives malformed data.
-- **Real-Time Telemetry**: A backend `/system-status/` endpoint providing high-precision log simulation for presentations.
+- **Interactive Multi-Step Wizard**: A high-fidelity, 5-step interactive form featuring dynamic validation, progress tracking, and validation cues.
+- **Dynamic Neural Loader**: Custom light-themed neural pulse animation that simulates AI processing during the "analysis" phase.
+- **Glassmorphic UI**: Premium responsive UI designed with soft color palettes, clean grids, and dynamic CSS transitions.
 
 ---
 
@@ -44,82 +52,113 @@ Standard career guidance systems are often "black boxes"—they give a predictio
 ```mermaid
 graph TD
     User((User)) -->|5-Step Wizard| Django[Django Web Server]
-    Django -->|System Status| Telemetry[Telemetry API]
-    Django -->|Clean Data| Processor[Data Processor]
-    Processor -->|Feature Vector| Predictor[Career Predictor Singleton]
-    Predictor -->|Model Load| Models[(XGBoost Artifacts)]
-    Predictor -->|Prediction| Django
-    Django -->|Generate Insights| Explainer[SHAP Explainer Singleton]
-    Explainer -->|Waterfall Plot| Plots[Media Storage]
-    Plots -->|Render| Django
-    Django -->|Result + Plot| User
+    Django -->|Background & Skill Specs| Val[Validation Layer]
+    Django -->|Features| Processor[Data Processor]
+    Processor -->|Primary Feature Vector| Predictor[Primary XGBoost Singleton]
+    Processor -->|Secondary Feature Vector| Comparator[Comparator Module]
+    Comparator -->|Model Load| RF[Secondary Random Forest Singleton]
+    Predictor -->|Prediction + Probabilities| Django
+    RF -->|Prediction + Probabilities| Django
+    Django -->|Explain Prediction| Explainer[SHAP Explainer Singleton]
+    Explainer -->| Waterfall Plots| Plots[Media Storage]
+    Plots -->|Render Charts| Django
+    Django -->|Comparison Dashboard| User
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend Architecture**: Python 3.14+, Django 6.0 (Enterprise-grade MVC)
-- **Machine Learning Kernel**: XGBoost 2.0 (Optimized Gradient Boosting), Scikit-Learn 1.3+ (Preprocessing & Metrics)
+- **Backend Framework**: Python 3.10+, Django 6.0 (MVC architecture)
+- **Machine Learning Kernel**: XGBoost 2.0+, Scikit-Learn 1.3+, Imbalanced-Learn (SMOTE)
+- **Hyperparameter Optimization**: Optuna (Bayesian Sequential Search)
 - **Explainability Suite**: SHAP (SHapley Additive exPlanations), TreeExplainer (Singleton Optimized)
-- **Data Engineering**: Pandas (Vectorized cleaning), NumPy (Matrix operations)
-- **Visual Intelligence**: Matplotlib (Custom localized Waterfall Plots), FontAwesome 6 (Dynamic UI Icons)
-- **Frontend Design**: HTML5/CSS3 (Glassmorphism & Neural Pulse Animations), Bootstrap 5 (Responsive Grid)
+- **Data Engineering**: Pandas (vectorized operations), NumPy (matrix operations)
+- **Visual Intelligence**: Matplotlib (customized waterfall charts), FontAwesome 6 (UI icons)
+- **Frontend Design**: HTML5/CSS3 (Vanilla Glassmorphism & Neural Pulse animations), Bootstrap 5 (Responsive grids)
 
 ---
 
 ## 📊 Methodology
 
-### 1. Data Cleansing & Relabeling
-We utilize a specialized `clean_and_relabel.py` script to ensure logical consistency. This ensures that features (like Coding Skills) are statistically significant for their respective careers (like Software Developer), achieving **98%+ model accuracy**.
+### 1. Data Engineering & Preprocessing
+- **Synthetic Data Generation**: Expanded data using `src/generate_secondary_data.py` to support 21 distinct career clusters and 8,400 samples.
+- **Domain Feature Engineering**: Added interaction indicators (e.g., Coding-to-Problem-Solving Ratio, Academic Index, Leadership Index).
+- **Outlier Removal & SMOTE**: Outlier clipping followed by Synthetic Minority Over-sampling Technique (SMOTE) to ensure class parity.
 
-### 2. The XGBoost Engine
-XGBoost is used for its superior handling of tabular data. The pipeline includes:
-- **Label Encoding**: For categorical variables (Field of Study).
-- **Standard Scaling**: For numerical ranges (GPA, Skill scores).
-- **Stratified CV**: Ensures class balance during training.
+### 2. Bayesian Tuning Pipeline
+- Evaluates optimal parameters (like tree depth, learning rates, estimator count, and split criteria) via sequential trials.
+- Utilizes stratified cross-validation (`StratifiedKFold`) to avoid target leakage or overfitting.
 
-### 3. SHAP Theory
-SHAP values are based on game theory, assigning each feature an "importance" value for a specific prediction.
-- **Base Value**: The average prediction of the model across the dataset.
-- **SHAP Value**: The shift (positive or negative) contributed by an individual skill.
-- **Final Output**: Base Value + Σ(SHAP Values) = Predicted Probability.
+### 3. SHAP Theory & Local Inference
+SHAP values calculate the marginal contribution of each feature to the model outcome across all possible feature combinations.
+$$\text{Prediction} = \text{Base Value} + \sum \text{SHAP Values}$$
+Waterfall plots arrange these contributors in descending order of absolute influence, highlighted in red (positive contribution) and blue (negative contribution).
 
 ---
 
 ## 🚀 Getting Started
 
 ### 1. Installation
-Clone the repository and navigate to the project root:
+Clone the repository:
 ```bash
 git clone https://github.com/beingmushfiq/SHAP-Driven-Career-Predictor.git
 cd SHAP-Driven-Career-Predictor
 ```
 
-### 2. Requirements
-Ensure you have Python 3.10+ installed, then install dependencies:
+### 2. Environment Setup
+Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Environment Configuration
-Create a `.env` file in the root directory (refer to `.env.example`). Recommended settings for presentation:
+Set environment variables in a `.env` file (refer to `.env.example`):
 ```env
-SHAP_BACKGROUND_SIZE=20    # Fast analysis
-TUNING_N_ITER=5            # Fast training
-TUNING_CV_FOLDS=2          # Minimal validation for speed
-DJANGO_DEBUG=True          # Local development
+SHAP_BACKGROUND_SIZE=20    # Reduces explanation time for presentation
+TUNING_N_ITER=5            # Faster Optuna search trials
+TUNING_CV_FOLDS=2          # Speed up training validation
+DJANGO_DEBUG=True          # Local development mode
 ```
 
-### 4. Build & Run
+### 3. Run Pipeline & Start App
+
+> [!IMPORTANT]
+> To avoid `ModuleNotFoundError` issues (such as `No module named 'imblearn'`), you must execute the scripts using the Python interpreter inside the virtual environment (`.venv`).
+
+#### On Windows (PowerShell):
+```powershell
+# 1. Clean, preprocess, and lock primary schema
+.venv\Scripts\python.exe -m scripts.clean_and_relabel
+
+# 2. Generate the secondary dataset (8,400 samples)
+.venv\Scripts\python.exe -m src.generate_secondary_data
+
+# 3. Train models (XGBoost and Random Forest) using Optuna
+.venv\Scripts\python.exe -m src.trainer
+.venv\Scripts\python.exe -m src.rf_trainer
+
+# 4. Migrate database and launch server
+cd webapp
+..\.venv\Scripts\python.exe manage.py migrate
+..\.venv\Scripts\python.exe manage.py runserver
+```
+
+#### On Linux / macOS (Bash):
 ```bash
-# Generate logical dataset
+# Activate the virtual environment
+source .venv/bin/activate
+
+# 1. Clean, preprocess, and lock primary schema
 python -m scripts.clean_and_relabel
 
-# Train model and generate SHAP background
-python -m src.trainer
+# 2. Generate the secondary dataset (8,400 samples)
+python -m src.generate_secondary_data
 
-# Start Web Server
+# 3. Train models (XGBoost and Random Forest) using Optuna
+python -m src.trainer
+python -m src.rf_trainer
+
+# 4. Migrate database and launch server
 cd webapp
 python manage.py migrate
 python manage.py runserver
@@ -127,35 +166,30 @@ python manage.py runserver
 
 ---
 
-## ⚡ Performance Tuning
-
-| Parameter | Default | Recommended (Speed) | Impact |
-| :--- | :--- | :--- | :--- |
-| `SHAP_BACKGROUND_SIZE` | 200 | 20 | Reduces explanation time from 10s to 1s. |
-| `TUNING_N_ITER` | 50 | 5 | Reduces training time significantly. |
-| `TEST_SIZE` | 0.2 | 0.2 | Standard split for evaluation metrics. |
-
----
-
 ## 📁 Directory Structure
 
 ```text
-├── data/               # Raw and processed CSV datasets
-├── models/             # XGBoost .joblib artifacts and metadata
-├── scripts/            # Data preparation & relabeling utilities
-├── src/                # Core ML Engine
-│   ├── processor.py    # Feature engineering & encoding
-│   ├── trainer.py      # Training & Hyperparameter tuning
-│   ├── predictor.py    # Singleton prediction logic
-│   └── explain.py      # SHAP visualization engine
-├── webapp/             # Django Application
-│   ├── predictor_app/  # Views, URLs, and Templates
-│   └── webapp/         # Project Settings
-└── requirements.txt    # System dependencies
+├── data/                       # Datasets (primary & secondary)
+├── models/                     # Model weights (.joblib) & metadata (.json)
+├── scripts/                    # Cleaning, relabeling, and schema tools
+├── src/                        # Machine Learning Core
+│   ├── config.py               # Parameter & feature schemas
+│   ├── processor.py            # Feature engineering, scaling & encoding
+│   ├── trainer.py              # Primary XGBoost Bayesian trainer
+│   ├── rf_trainer.py           # Secondary Random Forest Bayesian trainer
+│   ├── tuner.py                # Optuna hyperparameter searches
+│   ├── predictor.py            # Inference engine
+│   ├── comparator.py           # Dual-model comparison core
+│   ├── validator.py            # Background alignment validation layer
+│   └── explain.py              # SHAP local waterfall plot generator
+├── webapp/                     # Django Application
+│   ├── predictor_app/          # Views, routes, and glassmorphic templates
+│   └── webapp/                 # Settings & middleware
+└── requirements.txt            # System dependencies
 ```
 
 ---
 
 ## 🎓 Academic Implementation
-This project is an implementation of the thesis research:
-> **"SHAP-Driven Feature Importance Analysis of XGBoost for Explainable Localized Career Prediction Using Academic and Soft-Skill Data"**
+This project implements the research thesis:
+> **"SHAP-Driven Feature Importance Analysis of XGBoost and Random Forest for Explainable Localized Career Prediction Using Academic, Aptitude, and Soft-Skill Data"**
