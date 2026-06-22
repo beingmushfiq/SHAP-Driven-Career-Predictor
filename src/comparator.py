@@ -248,7 +248,7 @@ class ModelComparator:
         try:
             from src.predictor import CareerPredictor
             predictor = CareerPredictor()
-            return predictor.get_top_predictions(input_data, top_n=3)
+            return predictor.get_top_predictions(input_data, n=3)
         except Exception as e:
             logger.error(f"XGB prediction error: {e}")
             return None

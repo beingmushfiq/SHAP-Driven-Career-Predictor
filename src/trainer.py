@@ -39,7 +39,7 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay,
 )
 from xgboost import XGBClassifier
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import SMOTE  # type: ignore[import-untyped]
 
 from src.config import Config
 from src.utils import get_logger, set_seeds, compute_data_hash, format_metrics

@@ -4,7 +4,7 @@ Bayesian Hyperparameter Tuning using Optuna.
 Optimizes hyperparameters for XGBoost and Random Forest classifiers.
 """
 
-import optuna
+import optuna  # type: ignore[import-untyped]
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import f1_score
 from xgboost import XGBClassifier

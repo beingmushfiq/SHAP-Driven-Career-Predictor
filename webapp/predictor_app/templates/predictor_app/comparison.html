@@ -2,7 +2,7 @@
 {% block title %}Model Comparison | Career Predictor AI{% endblock %}
 
 {% block extra_css %}
-/* ─── Comparison Dashboard ──────────────────────────────── */
+<style>
 .hero-comparison {
     background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 50%, #06b6d4 100%);
     padding: 4rem 0 3rem;
@@ -201,6 +201,7 @@
 .model-unavailable .unavail-icon {
     font-size: 2.5rem; margin-bottom: 0.8rem; opacity: 0.4;
 }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -552,24 +553,40 @@
 {% endblock %}
 
 {% block extra_js %}
+{# Embed metric values safely as JSON to avoid JS parser errors with Django template tags #}
+<script type="application/json" id="metric-data">
+{
+    "xgbAcc":  {{ comparison.xgb.metrics.accuracy|default:0 }},
+    "rfAcc":   {{ comparison.rf.metrics.accuracy|default:0 }},
+    "xgbF1":   {{ comparison.xgb.metrics.f1_weighted|default:0 }},
+    "rfF1":    {{ comparison.rf.metrics.f1_weighted|default:0 }},
+    "xgbPrec": {{ comparison.xgb.metrics.precision_weighted|default:0 }},
+    "rfPrec":  {{ comparison.rf.metrics.precision_weighted|default:0 }},
+    "xgbRec":  {{ comparison.xgb.metrics.recall_weighted|default:0 }},
+    "rfRec":   {{ comparison.rf.metrics.recall_weighted|default:0 }}
+}
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Animate bar widths after page load
-    const bars = [
-        { id: 'bar-xgb-acc', val: {{ comparison.xgb.metrics.accuracy|default:0 }} },
-        { id: 'bar-rf-acc',  val: {{ comparison.rf.metrics.accuracy|default:0 }} },
-        { id: 'bar-xgb-f1',  val: {{ comparison.xgb.metrics.f1_weighted|default:0 }} },
-        { id: 'bar-rf-f1',   val: {{ comparison.rf.metrics.f1_weighted|default:0 }} },
-        { id: 'bar-xgb-prec',val: {{ comparison.xgb.metrics.precision_weighted|default:0 }} },
-        { id: 'bar-rf-prec', val: {{ comparison.rf.metrics.precision_weighted|default:0 }} },
-        { id: 'bar-xgb-rec', val: {{ comparison.xgb.metrics.recall_weighted|default:0 }} },
-        { id: 'bar-rf-rec',  val: {{ comparison.rf.metrics.recall_weighted|default:0 }} },
+    var raw = document.getElementById('metric-data');
+    if (!raw) return;
+    var m = JSON.parse(raw.textContent);
+
+    var bars = [
+        { id: 'bar-xgb-acc',  val: m.xgbAcc  },
+        { id: 'bar-rf-acc',   val: m.rfAcc   },
+        { id: 'bar-xgb-f1',   val: m.xgbF1   },
+        { id: 'bar-rf-f1',    val: m.rfF1    },
+        { id: 'bar-xgb-prec', val: m.xgbPrec },
+        { id: 'bar-rf-prec',  val: m.rfPrec  },
+        { id: 'bar-xgb-rec',  val: m.xgbRec  },
+        { id: 'bar-rf-rec',   val: m.rfRec   }
     ];
 
-    requestAnimationFrame(() => {
-        setTimeout(() => {
-            bars.forEach(b => {
-                const el = document.getElementById(b.id);
+    requestAnimationFrame(function () {
+        setTimeout(function () {
+            bars.forEach(function (b) {
+                var el = document.getElementById(b.id);
                 if (el) el.style.width = Math.min(b.val, 100) + '%';
             });
         }, 200);
