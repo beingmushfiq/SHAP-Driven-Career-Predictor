@@ -8,6 +8,8 @@ from .forms import CareerPredictionForm
 from src.predictor import CareerPredictor
 from src.explain import SHAPExplainer
 from src.config import Config
+from src.comparator import ModelComparator
+from src.generate_secondary_data import ALL_FEATURES as RF_FEATURE_NAMES
 
 class IndexView(View):
     def get(self, request):
@@ -57,9 +59,15 @@ class PredictView(View):
             career = class_names[career_idx]
             confidence = avg_probs[career_idx] * 100
             
-            # Get Top Predictions (sorted by avg_probs)
-            top_indices = avg_probs.argsort()[-3:][::-1]
-            top_predictions = [{'career': class_names[i], 'probability': round(avg_probs[i] * 100, 2)} for i in top_indices]
+            # Get Top Predictions with SHAP factors
+            top_predictions = predictor.get_top_predictions(representative_input, n=3)
+            # Align probabilities with averaged probabilities if multi-select was used
+            for pred in top_predictions:
+                try:
+                    c_idx = class_names.index(pred['career'])
+                    pred['probability'] = round(avg_probs[c_idx] * 100, 2)
+                except ValueError:
+                    pass
             
             # 3. Generate SHAP Explanation (for representative input)
             X_encoded = predictor.preprocess_input(representative_input)
@@ -75,12 +83,22 @@ class PredictView(View):
                 'plot_url': shap_plot_url,
                 'interpretations': interpretations
             }
+
+            # 4. Background and Skill Validation
+            from src.validator import CareerValidator
+            is_aligned, warnings, suggestions = CareerValidator.validate_prediction(representative_input, career)
+            validation_data = {
+                'is_aligned': is_aligned,
+                'warnings': warnings,
+                'suggestions': suggestions
+            }
             
             context = {
                 'career': career,
                 'confidence': f"{confidence:.2f}%",
                 'predictions': top_predictions,
                 'shap_data': shap_data,
+                'validation_data': validation_data,
                 'input_data': representative_input
             }
             return render(request, 'predictor_app/result.html', context)
@@ -151,3 +169,41 @@ class SystemStatusView(View):
 class AboutView(View):
     def get(self, request):
         return render(request, 'predictor_app/about.html')
+
+
+class ComparisonDashboardView(View):
+    """
+    Model comparison dashboard — shows XGBoost vs Random Forest metrics
+    side by side, loaded from both models' metadata JSON files.
+    """
+
+    # Human-readable tags for XGBoost (primary) features
+    _XGB_FEATURE_TAGS = [
+        'GPA', 'Extracurricular', 'Internships', 'Projects',
+        'Leadership', 'Field Courses', 'Research Exp.',
+        'Coding Skills', 'Communication', 'Problem Solving',
+        'Teamwork', 'Analytical', 'Presentation', 'Networking',
+        'Certifications', 'Field of Study',
+    ]
+
+    # Human-readable tags for RF (secondary) aptitude features
+    _RF_FEATURE_TAGS = [
+        'Logical Reasoning', 'Numerical Aptitude', 'Verbal Aptitude',
+        'Spatial Aptitude', 'Mechanical Aptitude', 'Creative Aptitude',
+        'Social Aptitude', 'Scientific Aptitude',
+        'Openness', 'Conscientiousness', 'Extraversion',
+        'Agreeableness', 'Emotional Stability',
+        'Realistic Interest', 'Investigative', 'Artistic',
+        'Social Interest', 'Enterprising', 'Conventional',
+    ]
+
+    def get(self, request):
+        comparator = ModelComparator()
+        comparison_data = comparator.get_comparison_data()
+
+        context = {
+            'comparison': comparison_data,
+            'xgb_features': self._XGB_FEATURE_TAGS,
+            'rf_features': self._RF_FEATURE_TAGS,
+        }
+        return render(request, 'predictor_app/comparison.html', context)

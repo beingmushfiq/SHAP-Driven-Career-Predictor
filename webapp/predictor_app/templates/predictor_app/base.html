@@ -339,6 +339,12 @@
                            href="{% url 'analysis' %}">Analysis</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'compare' %}active{% endif %}"
+                           href="{% url 'compare' %}">
+                            Compare Models
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.resolver_match.url_name == 'about' %}active{% endif %}"
                            href="{% url 'about' %}">About</a>
                     </li>

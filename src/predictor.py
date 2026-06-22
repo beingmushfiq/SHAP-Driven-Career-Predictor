@@ -102,14 +102,37 @@ class CareerPredictor:
         logger.info(f"Prediction: {career_label} (confidence: {proba[predicted_class]:.2%})")
         return career_label, proba
 
-    def get_top_predictions(self, form_data: Dict, n: int = 3) -> List[Tuple[str, float]]:
-        """Get top-N career predictions with confidence scores."""
+    def get_top_predictions(self, form_data: Dict, n: int = 3) -> List[Dict]:
+        """Get top-N career predictions with confidence scores and local SHAP explanations."""
         _, proba = self.predict(form_data)
         top_indices = np.argsort(proba)[::-1][:n]
-        return [
-            (self._target_encoder.inverse_transform([idx])[0], float(proba[idx]))
-            for idx in top_indices
-        ]
+        
+        from src.explain import SHAPExplainer
+        X = self.preprocess_input(form_data)
+        explainer = SHAPExplainer.get_instance()
+        
+        results = []
+        for idx in top_indices:
+            label = self._target_encoder.inverse_transform([idx])[0]
+            confidence = float(proba[idx])
+            interpretations = explainer.get_local_interpretations(X, class_idx=idx)
+            
+            # Format top 3 positive factors
+            positive_factors = [
+                item for item in interpretations if item['impact'] > 0
+            ][:3]
+            factors_summary = [
+                f"{item['feature']} (+{item['impact']:.1f}%)"
+                for item in positive_factors
+            ]
+            
+            results.append({
+                'career': label,
+                'probability': round(confidence * 100, 2),
+                'factors': factors_summary,
+                'interpretations': interpretations
+            })
+        return results
 
     def get_class_names(self) -> List[str]:
         if self._target_encoder is None:

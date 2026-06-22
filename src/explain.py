@@ -162,17 +162,17 @@ class SHAPExplainer:
         logger.info(f"Waterfall plot saved: {save_path}")
         return save_path
 
-    def get_local_interpretations(self, X_single: np.ndarray) -> List[dict]:
+    def get_local_interpretations(self, X_single: np.ndarray, class_idx: Optional[int] = None) -> List[dict]:
         """
         Get the top influential features and their SHAP impacts for a single prediction.
         Returns a list of dicts: [{'feature': 'Math', 'impact': 12.5}, ...]
         """
         shap_values = self.compute_shap_values(X_single)
         
-        # For multiclass, use the predicted class
+        # For multiclass, use the predicted class if class_idx not provided
         if len(shap_values.shape) == 3:
-            predicted_class = np.argmax(shap_values.values[0].sum(axis=0))
-            sv_values = shap_values.values[0, :, predicted_class]
+            target_class = class_idx if class_idx is not None else np.argmax(shap_values.values[0].sum(axis=0))
+            sv_values = shap_values.values[0, :, target_class]
         else:
             sv_values = shap_values.values[0]
 
@@ -245,3 +245,38 @@ class SHAPExplainer:
         """Reset singleton (for testing)."""
         with cls._lock:
             cls._instance = None
+
+
+def select_features_by_shap(
+    model,
+    X: np.ndarray,
+    feature_names: List[str],
+    threshold: float = 0.005
+) -> List[str]:
+    """
+    Ranks features by mean |SHAP| values and returns feature names above a threshold.
+    """
+    logger.info("Computing SHAP feature importance for feature selection...")
+    # Use a subset of background data for speed in TreeExplainer
+    bg_sample = X[:min(200, X.shape[0])]
+    explainer = shap.TreeExplainer(model, bg_sample)
+    shap_values = explainer(X[:min(500, X.shape[0])])
+    
+    if len(shap_values.shape) == 3:
+        shap_importance = np.abs(shap_values.values).mean(axis=(0, 2))
+    else:
+        shap_importance = np.abs(shap_values.values).mean(axis=0)
+        
+    # Normalize to relative contribution
+    shap_norm = shap_importance / (shap_importance.sum() + 1e-10)
+    
+    kept_features = []
+    for i, name in enumerate(feature_names):
+        importance = shap_norm[i]
+        logger.info(f"Feature: {name}, SHAP relative importance: {importance:.4f}")
+        if importance >= threshold:
+            kept_features.append(name)
+            
+    logger.info(f"SHAP feature selection kept {len(kept_features)}/{len(feature_names)} features (threshold={threshold}).")
+    return kept_features
+

@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "feature_count": 16,
+  "feature_count": 22,
   "feature_names": [
     "field",
     "gpa",
@@ -17,7 +17,13 @@
     "analytical_skills",
     "presentation_skills",
     "networking_skills",
-    "industry_certifications"
+    "industry_certifications",
+    "analytical_composite",
+    "communication_composite",
+    "experience_score",
+    "cs_coding_interaction",
+    "finance_analytical_interaction",
+    "medicine_gpa_interaction"
   ],
   "feature_types": {
     "field": "categorical",
@@ -35,6 +41,12 @@
     "analytical_skills": "numerical",
     "presentation_skills": "numerical",
     "networking_skills": "numerical",
-    "industry_certifications": "numerical"
+    "industry_certifications": "numerical",
+    "analytical_composite": "numerical",
+    "communication_composite": "numerical",
+    "experience_score": "numerical",
+    "cs_coding_interaction": "numerical",
+    "finance_analytical_interaction": "numerical",
+    "medicine_gpa_interaction": "numerical"
   }
 }

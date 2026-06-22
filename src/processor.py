@@ -25,6 +25,7 @@ from sklearn.preprocessing import LabelEncoder
 
 from src.config import Config
 from src.utils import get_logger, set_seeds
+from src.feature_engineer import engineer_features
 
 logger = get_logger(__name__, Config.LOG_DIR)
 
@@ -68,21 +69,15 @@ class DataProcessor:
             logger.info(f"Loading data from {path}")
             return pd.read_csv(path)
 
-        csv_files = list(Config.DATA_RAW_DIR.glob('*.csv'))
-        if not csv_files:
+        main_data_file = Config.DATA_RAW_DIR / 'career_dataset_student.csv'
+        if not main_data_file.exists():
             raise FileNotFoundError(
-                f"No CSV files found in {Config.DATA_RAW_DIR}. "
-                "Please place your dataset there."
+                f"Main dataset not found at {main_data_file}."
             )
 
-        logger.info(f"Found {len(csv_files)} CSV file(s) in {Config.DATA_RAW_DIR}")
-        dfs = []
-        for f in csv_files:
-            logger.info(f"  Loading: {f.name}")
-            dfs.append(pd.read_csv(f))
-
-        df = pd.concat(dfs, ignore_index=True)
-        logger.info(f"Combined dataset shape: {df.shape}")
+        logger.info(f"Loading main dataset: {main_data_file.name}")
+        df = pd.read_csv(main_data_file)
+        logger.info(f"Dataset shape: {df.shape}")
         return df
 
     def clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -131,7 +126,7 @@ class DataProcessor:
         df = df.drop_duplicates()
 
         logger.info(
-            f"Cleaning complete: {original_shape} → {df.shape} "
+            f"Cleaning complete: {original_shape} -> {df.shape} "
             f"(dropped {original_shape[0] - df.shape[0]} rows)"
         )
         return df.reset_index(drop=True)
@@ -198,6 +193,9 @@ class DataProcessor:
 
         # Encode target variable separately
         if target_col in df.columns and not pd.api.types.is_numeric_dtype(df[target_col]):
+            if Config.USE_CAREER_CLUSTERS:
+                df[target_col] = df[target_col].apply(Config.get_cluster_for_career)
+                logger.info("Mapped careers to career clusters")
             self.target_encoder = LabelEncoder()
             df[target_col] = self.target_encoder.fit_transform(df[target_col].astype(str))
             logger.info(
@@ -318,6 +316,10 @@ class DataProcessor:
         # 3. Impute
         df = self._impute_missing(df)
 
+        # 3.5 Feature Engineering
+        df = engineer_features(df)
+        logger.info(f"Engineered features added. Shape: {df.shape}")
+
         # 4. Encode
         df = self.encode_features(df)
 
@@ -363,6 +365,17 @@ def encode_single_input(
     Raises:
         ValueError: If required features are missing.
     """
+    # Apply feature engineering
+    cleaned_dict = {}
+    for k, v in input_dict.items():
+        k_clean = k.strip().lower().replace(' ', '_')
+        cleaned_dict[k_clean] = [v]
+    
+    single_df = pd.DataFrame(cleaned_dict)
+    single_df = engineer_features(single_df)
+    
+    input_dict = {col: single_df[col].iloc[0] for col in single_df.columns}
+
     feature_names = feature_schema['feature_names']
     encoded = np.zeros(len(feature_names), dtype=np.float32)
 

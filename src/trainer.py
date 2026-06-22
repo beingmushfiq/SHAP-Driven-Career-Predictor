@@ -39,6 +39,7 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay,
 )
 from xgboost import XGBClassifier
+from imblearn.over_sampling import SMOTE
 
 from src.config import Config
 from src.utils import get_logger, set_seeds, compute_data_hash, format_metrics
@@ -86,11 +87,70 @@ class ModelTrainer:
             f"(test_size={Config.TEST_SIZE})"
         )
 
-        # Log class distribution
         unique, counts = np.unique(y_train, return_counts=True)
         logger.info(f"Training class distribution: {dict(zip(unique, counts))}")
 
         return X_train, X_test, y_train, y_test
+
+    def rebalance_data(self, X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Apply IQR-based outlier detection and SMOTE oversampling.
+
+        Args:
+            X_train: Training features.
+            y_train: Training labels.
+
+        Returns:
+            Tuple of (X_train_resampled, y_train_resampled).
+        """
+        logger.info("Applying data cleaning and rebalancing on training set...")
+
+        # 1. Outlier removal using IQR (3.0 * IQR) class-by-class
+        # This prevents dropping all samples of minority classes and maintains valid labels.
+        original_count = X_train.shape[0]
+        keep_indices = []
+        
+        for class_label in np.unique(y_train):
+            class_mask = (y_train == class_label)
+            X_class = X_train[class_mask]
+            
+            # If class has few samples, keep all of them
+            if X_class.shape[0] <= 15:
+                keep_indices.extend(np.where(class_mask)[0])
+                continue
+                
+            class_keep_mask = np.ones(X_class.shape[0], dtype=bool)
+            for col_idx in range(1, X_train.shape[1]):
+                col_data = X_class[:, col_idx]
+                q25, q75 = np.percentile(col_data, 25), np.percentile(col_data, 75)
+                iqr = q75 - q25
+                if iqr <= 0.1:
+                    continue
+                cut_off = iqr * 3.0
+                lower, upper = q25 - cut_off, q75 + cut_off
+                
+                outliers = (col_data < lower) | (col_data > upper)
+                class_keep_mask = class_keep_mask & (~outliers)
+                
+            # Ensure we keep at least 10 samples or all of them if outlier filter is too aggressive
+            if np.sum(class_keep_mask) >= 10:
+                indices = np.where(class_mask)[0][class_keep_mask]
+            else:
+                indices = np.where(class_mask)[0]
+            keep_indices.extend(indices)
+
+        X_train_clean = X_train[keep_indices]
+        y_train_clean = y_train[keep_indices]
+        logger.info(f"Outlier removal complete: {original_count} -> {X_train_clean.shape[0]} rows (dropped {original_count - X_train_clean.shape[0]} rows)")
+
+        # 2. SMOTE oversampling
+        smote = SMOTE(random_state=Config.RANDOM_SEED)
+        X_train_res, y_train_res = smote.fit_resample(X_train_clean, y_train_clean)
+        
+        unique, counts = np.unique(y_train_res, return_counts=True)
+        logger.info(f"After SMOTE: train shape={X_train_res.shape}, classes distribution: {dict(zip(unique, counts))}")
+        
+        return X_train_res, y_train_res
 
     def build_model(self, params: Optional[Dict] = None) -> XGBClassifier:
         """
@@ -116,10 +176,8 @@ class ModelTrainer:
         y_train: np.ndarray,
     ) -> Dict:
         """
-        Perform hyperparameter tuning using RandomizedSearchCV.
-
-        Uses StratifiedKFold to maintain class balance across folds.
-        Scoring: f1_weighted (robust to class imbalance).
+        Perform hyperparameter tuning. Supports Bayesian optimization (Optuna)
+        and falls back to RandomizedSearchCV.
 
         Args:
             X_train: Training features.
@@ -128,8 +186,15 @@ class ModelTrainer:
         Returns:
             Dictionary of best hyperparameters.
         """
+        if Config.TUNING_METHOD == 'bayesian':
+            try:
+                from src.tuner import tune_xgboost
+                return tune_xgboost(X_train, y_train)
+            except Exception as e:
+                logger.warning(f"Bayesian tuning failed with error: {e}. Falling back to RandomizedSearchCV.")
+
         logger.info("=" * 60)
-        logger.info("STARTING HYPERPARAMETER TUNING")
+        logger.info("STARTING RANDOMIZED HYPERPARAMETER TUNING")
         logger.info(f"  Iterations: {Config.TUNING_N_ITER}")
         logger.info(f"  CV Folds: {Config.TUNING_CV_FOLDS}")
         logger.info("=" * 60)
@@ -385,6 +450,9 @@ class ModelTrainer:
 
         # 2. Split
         X_train, X_test, y_train, y_test = self.split_data(X, y)
+
+        # 2.5 Rebalance & clean training data
+        X_train, y_train = self.rebalance_data(X_train, y_train)
 
         # 3. Tune
         best_params = self.tune_hyperparameters(X_train, y_train)

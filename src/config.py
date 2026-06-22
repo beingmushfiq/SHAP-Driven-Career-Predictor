@@ -40,6 +40,14 @@ class Config:
     METADATA_PATH = MODELS_DIR / 'metadata.json'
     TARGET_ENCODER_PATH = MODELS_DIR / 'target_encoder.pkl'
 
+    # ─── Random Forest Model Paths ──────────────────────────────────
+    RF_MODEL_PATH = MODELS_DIR / 'rf_model.pkl'
+    RF_METADATA_PATH = MODELS_DIR / 'rf_metadata.json'
+    RF_SHAP_BACKGROUND_PATH = MODELS_DIR / 'rf_shap_background.npy'
+    RF_ENCODERS_PATH = MODELS_DIR / 'rf_label_encoders.pkl'
+    RF_TARGET_ENCODER_PATH = MODELS_DIR / 'rf_target_encoder.pkl'
+    RF_FEATURE_SCHEMA_PATH = MODELS_DIR / 'rf_feature_schema.json'
+
     # ─── Media Paths ────────────────────────────────────────────────
     MEDIA_DIR = PROJECT_ROOT / os.environ.get('MEDIA_DIR', 'webapp/media')
     SHAP_PLOTS_DIR = MEDIA_DIR / 'shap_plots'
@@ -52,18 +60,34 @@ class Config:
     # ─── Hyperparameter Tuning ──────────────────────────────────────
     TUNING_N_ITER = int(os.environ.get('TUNING_N_ITER', 50))
     TUNING_CV_FOLDS = int(os.environ.get('TUNING_CV_FOLDS', 5))
+    TUNING_METHOD = os.environ.get('TUNING_METHOD', 'bayesian')  # 'random', 'grid', 'bayesian'
+    OPTUNA_N_TRIALS = int(os.environ.get('OPTUNA_N_TRIALS', 100))
 
     PARAM_GRID = {
-        'n_estimators': [100, 200, 300, 500],
-        'max_depth': [3, 5, 7, 9],
-        'learning_rate': [0.01, 0.05, 0.1, 0.2],
-        'subsample': [0.7, 0.8, 0.9, 1.0],
-        'colsample_bytree': [0.7, 0.8, 0.9, 1.0],
-        'min_child_weight': [1, 3, 5],
-        'gamma': [0, 0.1, 0.3],
-        'reg_alpha': [0, 0.01, 0.1],
-        'reg_lambda': [1, 1.5, 2],
+        'n_estimators': [100, 200, 300, 500, 700],
+        'max_depth': [3, 5, 7, 9, 12],
+        'learning_rate': [0.01, 0.03, 0.05, 0.1, 0.2],
+        'subsample': [0.6, 0.7, 0.8, 0.9, 1.0],
+        'colsample_bytree': [0.6, 0.7, 0.8, 0.9, 1.0],
+        'min_child_weight': [1, 3, 5, 7],
+        'gamma': [0, 0.1, 0.3, 0.5],
+        'reg_alpha': [0, 0.01, 0.1, 1.0],
+        'reg_lambda': [0.5, 1, 1.5, 2, 3],
     }
+
+    # ─── Random Forest Param Grid ───────────────────────────────────
+    RF_PARAM_GRID = {
+        'n_estimators': [100, 200, 300, 500],
+        'max_depth': [5, 10, 15, 20, None],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4],
+        'max_features': ['sqrt', 'log2', None],
+        'class_weight': ['balanced', 'balanced_subsample', None],
+    }
+
+    # ─── Ensemble Configuration ─────────────────────────────────────
+    ENSEMBLE_METHOD = os.environ.get('ENSEMBLE_METHOD', 'soft_voting')  # soft_voting, hard_voting, weighted_voting, stacking
+    ENSEMBLE_WEIGHTS = None  # Auto-computed from CV scores if None
 
     # ─── XGBoost Base Parameters ────────────────────────────────────
     XGB_BASE_PARAMS = {
@@ -95,6 +119,12 @@ class Config:
         'presentation_skills',
         'networking_skills',
         'industry_certifications',
+        'analytical_composite',
+        'communication_composite',
+        'experience_score',
+        'cs_coding_interaction',
+        'finance_analytical_interaction',
+        'medicine_gpa_interaction',
     ]
 
     CATEGORICAL_FEATURES = [
@@ -130,7 +160,75 @@ class Config:
         ],
     }
 
-    # ─── Career Labels ──────────────────────────────────────────────
+    # ─── Career Clustering ──────────────────────────────────────────
+    # Merge 90 fine-grained careers into ~20 high-density clusters
+    USE_CAREER_CLUSTERS = os.environ.get('USE_CAREER_CLUSTERS', 'true').lower() == 'true'
+
+    CAREER_CLUSTERS = {
+        # Technology
+        'Software Engineer': ['Software Developer', 'Web Developer', 'Game Developer'],
+        'Data & AI Specialist': ['Data Scientist', 'AI Researcher', 'Cybersecurity Analyst'],
+        # Engineering
+        'Engineer': ['Civil Engineer', 'Mechanical Engineer', 'Electrical Engineer',
+                     'Chemical Engineer', 'Aerospace Engineer', 'Biomedical Engineer',
+                     'Fluid Mechanics Engineer', 'Acoustics Specialist'],
+        # Healthcare
+        'Doctor & Surgeon': ['Doctor', 'Surgeon', 'Physician Assistant'],
+        'Healthcare Specialist': ['Nurse', 'Pharmacist', 'Dentist'],
+        # Business & Management
+        'Business Manager': ['Manager', 'Entrepreneur', 'Construction Manager',
+                             'Human Resources Specialist'],
+        # Finance
+        'Finance Professional': ['Financial Analyst', 'Financial Advisor', 'Financial Controller',
+                                 'Accountant', 'Credit Analyst', 'Risk Analyst'],
+        'Investment & Insurance': ['Investment Banker', 'Actuary'],
+        # Marketing
+        'Marketing Professional': ['Marketing Manager', 'Marketing Specialist',
+                                   'Digital Marketing Specialist', 'Social Media Manager',
+                                   'Market Research Analyst'],
+        'Brand & Advertising': ['Brand Manager', 'Advertising Manager'],
+        # Law
+        'Legal Professional': ['Lawyer', 'Judge', 'Legal Consultant', 'Legal Analyst'],
+        'Legal Support': ['Paralegal', 'Legal Secretary'],
+        # Education
+        'Educator': ['Teacher', 'Special Education Teacher', 'Music Teacher',
+                     'Principal', 'Education Administrator', 'Curriculum Developer'],
+        # Psychology
+        'Psychologist': ['Psychologist', 'Clinical Psychologist', 'Forensic Psychologist',
+                         'School Psychologist', 'Industrial-Organizational Psychologist'],
+        'Counselor & Therapist': ['Counselor', 'School Counselor', 'Art Therapist', 'Music Therapist'],
+        # Sciences
+        'Biologist': ['Biologist', 'Microbiologist', 'Geneticist', 'Biochemist',
+                      'Biotechnologist', 'Ecologist', 'Zoologist'],
+        'Chemist': ['Chemist', 'Analytical Chemist', 'Organic Chemist',
+                    'Inorganic Chemist', 'Physical Chemist'],
+        'Physicist': ['Physicist', 'Nuclear Physicist', 'Quantum Physicist', 'Astronomer'],
+        # Architecture & Design
+        'Architect & Planner': ['Architect', 'Urban Planner', 'Landscape Architect',
+                                'Interior Designer', 'Architectural Technologist'],
+        # Creative Arts
+        'Visual Artist': ['Artist', 'Art Director', 'Graphic Designer',
+                          'Illustrator', 'Animator'],
+        'Musician & Audio': ['Musician', 'Composer', 'Conductor', 'Sound Engineer'],
+    }
+
+    # Build reverse mapping: original_career → cluster_name
+    _CAREER_TO_CLUSTER = {}
+    for cluster, careers in CAREER_CLUSTERS.items():
+        for career in careers:
+            _CAREER_TO_CLUSTER[career] = cluster
+
+    @classmethod
+    def get_cluster_for_career(cls, career: str) -> str:
+        """Map a fine-grained career label to its cluster name."""
+        return cls._CAREER_TO_CLUSTER.get(career, career)
+
+    @classmethod
+    def get_all_clusters(cls) -> list:
+        """Return sorted list of all cluster names."""
+        return sorted(cls.CAREER_CLUSTERS.keys())
+
+    # ─── Career Labels (original fine-grained) ──────────────────────
     CAREER_LABELS = [
         'AI Researcher', 'Accountant', 'Acoustics Specialist', 'Actuary',
         'Advertising Manager', 'Aerospace Engineer', 'Analytical Chemist',

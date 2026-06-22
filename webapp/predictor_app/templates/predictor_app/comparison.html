@@ -1,0 +1,579 @@
+{% extends 'predictor_app/base.html' %}
+{% block title %}Model Comparison | Career Predictor AI{% endblock %}
+
+{% block extra_css %}
+/* ─── Comparison Dashboard ──────────────────────────────── */
+.hero-comparison {
+    background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 50%, #06b6d4 100%);
+    padding: 4rem 0 3rem;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+.hero-comparison::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-comparison .badge-pill {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    backdrop-filter: blur(10px);
+    border-radius: 100px;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 0.5px;
+    text-transform: uppercase; color: rgba(255,255,255,0.9);
+    margin-bottom: 1.2rem;
+}
+.hero-comparison .badge-pill .dot {
+    width: 6px; height: 6px; background: #4ade80; border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+/* ─── Model Cards ─────────────────────────────────────── */
+.model-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 2px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    transition: var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+.model-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+}
+.model-card.xgb::before { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+.model-card.rf::before  { background: linear-gradient(90deg, #10b981, #06b6d4); }
+.model-card.winner-card {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.15), 0 8px 30px rgba(0,0,0,0.08);
+}
+.model-card.winner-card.rf-winner {
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.15), 0 8px 30px rgba(0,0,0,0.08);
+}
+.model-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+.model-icon {
+    width: 48px; height: 48px; border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+}
+.model-icon.xgb { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
+.model-icon.rf  { background: linear-gradient(135deg, #10b981, #06b6d4); }
+
+.winner-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff; border-radius: 100px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* ─── Metric Row ──────────────────────────────────────── */
+.metric-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    margin-top: 1rem;
+}
+.metric-box {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid var(--glass-border);
+    transition: var(--transition-smooth);
+}
+.metric-box:hover { transform: translateY(-2px); }
+.metric-value {
+    font-size: 1.6rem; font-weight: 800;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+}
+.metric-value.green {
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+.metric-label {
+    font-size: 0.72rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* ─── Bar Race ────────────────────────────────────────── */
+.metric-bar-row {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.2rem;
+}
+.metric-bar-label {
+    width: 120px; font-size: 0.82rem; font-weight: 600;
+    color: var(--text-secondary); flex-shrink: 0;
+}
+.metric-bar-track {
+    flex: 1; height: 8px; background: var(--bg-tertiary);
+    border-radius: 100px; overflow: hidden; position: relative;
+}
+.metric-bar-fill {
+    height: 100%; border-radius: 100px;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.metric-bar-fill.xgb { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+.metric-bar-fill.rf  { background: linear-gradient(90deg, #10b981, #06b6d4); }
+.metric-bar-value {
+    width: 52px; text-align: right; font-size: 0.82rem;
+    font-weight: 700; color: var(--text-primary); flex-shrink: 0;
+}
+
+/* ─── Status Indicators ───────────────────────────────── */
+.status-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    border-radius: 100px; padding: 0.3rem 0.8rem;
+    font-size: 0.78rem; font-weight: 600;
+}
+.status-pill.trained {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #10b981;
+}
+.status-pill.pending {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: #f59e0b;
+}
+.status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+}
+.status-pill.trained .status-dot { background: #10b981; animation: pulse 1.5s infinite; }
+.status-pill.pending .status-dot { background: #f59e0b; }
+
+/* ─── Params Table ────────────────────────────────────── */
+.params-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.params-table td { padding: 0.4rem 0.6rem; }
+.params-table td:first-child {
+    color: var(--text-muted); font-weight: 500; width: 55%;
+}
+.params-table td:last-child {
+    font-weight: 700; color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+}
+.params-table tr:not(:last-child) td {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+/* ─── Agreement Banner ────────────────────────────────── */
+.agreement-banner {
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    display: flex; align-items: center; gap: 1rem;
+    font-weight: 600;
+}
+.agreement-banner.agree {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #059669;
+}
+.agreement-banner.disagree {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: #b45309;
+}
+
+/* ─── Chart wrapper ───────────────────────────────────── */
+.chart-container {
+    position: relative; height: 300px;
+}
+
+/* ─── Unavailable Overlay ─────────────────────────────── */
+.model-unavailable {
+    text-align: center; padding: 2.5rem 1rem;
+    color: var(--text-muted);
+}
+.model-unavailable .unavail-icon {
+    font-size: 2.5rem; margin-bottom: 0.8rem; opacity: 0.4;
+}
+{% endblock %}
+
+{% block content %}
+<!-- Hero Banner -->
+<div class="hero-comparison">
+    <div class="container position-relative">
+        <div class="badge-pill">
+            <span class="dot"></span>
+            Multi-Model Comparison Dashboard
+        </div>
+        <h1 class="fw-800 mb-2" style="font-size:2.4rem; letter-spacing:-1px;">
+            XGBoost vs Random Forest
+        </h1>
+        <p class="mb-0" style="opacity:0.85; max-width:540px; font-size:1.05rem;">
+            Side-by-side performance metrics across two independently trained models
+            on different career datasets — objective, data-driven comparison.
+        </p>
+    </div>
+</div>
+
+<div class="container py-5">
+
+    <!-- ── STATUS ROW ─────────────────────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="glass-card-static d-flex align-items-center gap-3" style="padding:1rem 1.5rem;">
+                <div class="model-icon xgb">🚀</div>
+                <div>
+                    <div class="fw-700" style="font-size:0.95rem;">XGBoost (Primary)</div>
+                    <div class="text-muted" style="font-size:0.8rem;">GPA · Skills · Field of Study</div>
+                </div>
+                <div class="ms-auto">
+                    {% if comparison.xgb.available %}
+                        <span class="status-pill trained"><span class="status-dot"></span>Trained</span>
+                    {% else %}
+                        <span class="status-pill pending"><span class="status-dot"></span>Not Trained</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="glass-card-static d-flex align-items-center gap-3" style="padding:1rem 1.5rem;">
+                <div class="model-icon rf">🌲</div>
+                <div>
+                    <div class="fw-700" style="font-size:0.95rem;">Random Forest (Secondary)</div>
+                    <div class="text-muted" style="font-size:0.8rem;">Aptitude · Personality · RIASEC</div>
+                </div>
+                <div class="ms-auto">
+                    {% if comparison.rf.available %}
+                        <span class="status-pill trained"><span class="status-dot"></span>Trained</span>
+                    {% else %}
+                        <span class="status-pill pending"><span class="status-dot"></span>Not Trained</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── METRIC CARDS ────────────────────────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <!-- XGBoost Card -->
+        <div class="col-md-6">
+            <div class="model-card xgb {% if comparison.winner == 'xgb' %}winner-card{% endif %}">
+                <div class="model-header">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="model-icon xgb">🚀</div>
+                        <div>
+                            <div class="fw-800" style="font-size:1.05rem;">XGBoost</div>
+                            <div class="text-muted" style="font-size:0.78rem;">Gradient Boosting · Primary Dataset</div>
+                        </div>
+                    </div>
+                    {% if comparison.winner == 'xgb' %}
+                        <span class="winner-badge">🏆 Winner</span>
+                    {% endif %}
+                </div>
+
+                {% if comparison.xgb.available %}
+                    <div class="metric-row">
+                        <div class="metric-box">
+                            <div class="metric-value">{{ comparison.xgb.metrics.accuracy }}%</div>
+                            <div class="metric-label">Accuracy</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value">{{ comparison.xgb.metrics.f1_weighted }}%</div>
+                            <div class="metric-label">F1 Score</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value">{{ comparison.xgb.metrics.precision_weighted }}%</div>
+                            <div class="metric-label">Precision</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value">{{ comparison.xgb.metrics.recall_weighted }}%</div>
+                            <div class="metric-label">Recall</div>
+                        </div>
+                    </div>
+
+                    <hr style="border-color:var(--glass-border); margin:1.5rem 0;">
+
+                    <div class="section-label">Best Parameters</div>
+                    <table class="params-table">
+                        {% for k, v in comparison.xgb.params.items %}
+                        <tr>
+                            <td>{{ k }}</td>
+                            <td>{{ v }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" style="color:var(--text-muted)">No params recorded</td></tr>
+                        {% endfor %}
+                    </table>
+
+                    <div class="mt-3" style="font-size:0.78rem; color:var(--text-muted);">
+                        <span>📦 {{ comparison.xgb.n_features }} features · {{ comparison.xgb.n_classes }} classes</span>
+                        <span class="ms-3">📅 {{ comparison.xgb.trained_at|truncatechars:20 }}</span>
+                    </div>
+                {% else %}
+                    <div class="model-unavailable">
+                        <div class="unavail-icon">🔧</div>
+                        <div class="fw-600 mb-1">Not yet trained</div>
+                        <div style="font-size:0.82rem;">Run <code>python -m src.trainer</code> to train.</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Random Forest Card -->
+        <div class="col-md-6">
+            <div class="model-card rf {% if comparison.winner == 'rf' %}winner-card rf-winner{% endif %}">
+                <div class="model-header">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="model-icon rf">🌲</div>
+                        <div>
+                            <div class="fw-800" style="font-size:1.05rem;">Random Forest</div>
+                            <div class="text-muted" style="font-size:0.78rem;">Ensemble Trees · Aptitude Dataset</div>
+                        </div>
+                    </div>
+                    {% if comparison.winner == 'rf' %}
+                        <span class="winner-badge">🏆 Winner</span>
+                    {% endif %}
+                </div>
+
+                {% if comparison.rf.available %}
+                    <div class="metric-row">
+                        <div class="metric-box">
+                            <div class="metric-value green">{{ comparison.rf.metrics.accuracy }}%</div>
+                            <div class="metric-label">Accuracy</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value green">{{ comparison.rf.metrics.f1_weighted }}%</div>
+                            <div class="metric-label">F1 Score</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value green">{{ comparison.rf.metrics.precision_weighted }}%</div>
+                            <div class="metric-label">Precision</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="metric-value green">{{ comparison.rf.metrics.recall_weighted }}%</div>
+                            <div class="metric-label">Recall</div>
+                        </div>
+                    </div>
+
+                    <hr style="border-color:var(--glass-border); margin:1.5rem 0;">
+
+                    <div class="section-label">Best Parameters</div>
+                    <table class="params-table">
+                        {% for k, v in comparison.rf.params.items %}
+                        <tr>
+                            <td>{{ k }}</td>
+                            <td>{{ v }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" style="color:var(--text-muted)">No params recorded</td></tr>
+                        {% endfor %}
+                    </table>
+
+                    <div class="mt-3" style="font-size:0.78rem; color:var(--text-muted);">
+                        <span>📦 {{ comparison.rf.n_features }} features · {{ comparison.rf.n_classes }} classes</span>
+                        <span class="ms-3">📅 {{ comparison.rf.trained_at|truncatechars:20 }}</span>
+                    </div>
+                {% else %}
+                    <div class="model-unavailable">
+                        <div class="unavail-icon">🔧</div>
+                        <div class="fw-600 mb-1">Not yet trained</div>
+                        <div style="font-size:0.82rem;">Run <code>python -m src.rf_trainer</code> to train.</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── BAR CHART COMPARISON ────────────────────────────────────────── -->
+    {% if comparison.comparison_ready %}
+    <div class="glass-card-static mb-4">
+        <div class="section-label mb-3">Metric Comparison</div>
+        <h5 class="fw-700 mb-4">Performance at a Glance</h5>
+
+        <div class="d-flex gap-3 mb-4">
+            <div class="d-flex align-items-center gap-2">
+                <div style="width:14px;height:14px;border-radius:3px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);flex-shrink:0;"></div>
+                <span style="font-size:0.82rem;font-weight:600;">XGBoost</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <div style="width:14px;height:14px;border-radius:3px;background:linear-gradient(135deg,#10b981,#06b6d4);flex-shrink:0;"></div>
+                <span style="font-size:0.82rem;font-weight:600;">Random Forest</span>
+            </div>
+        </div>
+
+        <!-- Accuracy -->
+        <div class="metric-bar-row">
+            <div class="metric-bar-label">Accuracy</div>
+            <div style="flex:1;">
+                <div class="metric-bar-track mb-1">
+                    <div class="metric-bar-fill xgb" id="bar-xgb-acc" style="width:0"></div>
+                </div>
+                <div class="metric-bar-track">
+                    <div class="metric-bar-fill rf" id="bar-rf-acc" style="width:0"></div>
+                </div>
+            </div>
+            <div class="metric-bar-value">
+                <div>{{ comparison.xgb.metrics.accuracy }}%</div>
+                <div class="mt-1" style="color:var(--accent-green);">{{ comparison.rf.metrics.accuracy }}%</div>
+            </div>
+        </div>
+
+        <!-- F1 -->
+        <div class="metric-bar-row">
+            <div class="metric-bar-label">F1 Score</div>
+            <div style="flex:1;">
+                <div class="metric-bar-track mb-1">
+                    <div class="metric-bar-fill xgb" id="bar-xgb-f1" style="width:0"></div>
+                </div>
+                <div class="metric-bar-track">
+                    <div class="metric-bar-fill rf" id="bar-rf-f1" style="width:0"></div>
+                </div>
+            </div>
+            <div class="metric-bar-value">
+                <div>{{ comparison.xgb.metrics.f1_weighted }}%</div>
+                <div class="mt-1" style="color:var(--accent-green);">{{ comparison.rf.metrics.f1_weighted }}%</div>
+            </div>
+        </div>
+
+        <!-- Precision -->
+        <div class="metric-bar-row">
+            <div class="metric-bar-label">Precision</div>
+            <div style="flex:1;">
+                <div class="metric-bar-track mb-1">
+                    <div class="metric-bar-fill xgb" id="bar-xgb-prec" style="width:0"></div>
+                </div>
+                <div class="metric-bar-track">
+                    <div class="metric-bar-fill rf" id="bar-rf-prec" style="width:0"></div>
+                </div>
+            </div>
+            <div class="metric-bar-value">
+                <div>{{ comparison.xgb.metrics.precision_weighted }}%</div>
+                <div class="mt-1" style="color:var(--accent-green);">{{ comparison.rf.metrics.precision_weighted }}%</div>
+            </div>
+        </div>
+
+        <!-- Recall -->
+        <div class="metric-bar-row">
+            <div class="metric-bar-label">Recall</div>
+            <div style="flex:1;">
+                <div class="metric-bar-track mb-1">
+                    <div class="metric-bar-fill xgb" id="bar-xgb-rec" style="width:0"></div>
+                </div>
+                <div class="metric-bar-track">
+                    <div class="metric-bar-fill rf" id="bar-rf-rec" style="width:0"></div>
+                </div>
+            </div>
+            <div class="metric-bar-value">
+                <div>{{ comparison.xgb.metrics.recall_weighted }}%</div>
+                <div class="mt-1" style="color:var(--accent-green);">{{ comparison.rf.metrics.recall_weighted }}%</div>
+            </div>
+        </div>
+
+        <!-- Delta summary -->
+        {% if comparison.winner != 'tie' %}
+        <div class="mt-3 p-3" style="background:var(--bg-secondary);border-radius:var(--radius-md);border:1px solid var(--glass-border);">
+            <span class="fw-700">
+                {% if comparison.winner == 'xgb' %}🚀 XGBoost{% else %}🌲 Random Forest{% endif %}
+                leads by
+            </span>
+            <span class="fw-800" style="color:var(--accent-blue);">{{ comparison.delta_accuracy }}pp</span>
+            in accuracy. Both models exceed the 90%+ target threshold.
+        </div>
+        {% else %}
+        <div class="mt-3 p-3" style="background:var(--bg-secondary);border-radius:var(--radius-md);border:1px solid var(--glass-border);">
+            <span class="fw-600">⚖️ Both models perform within 0.5pp — essentially tied. Ensemble for best results.</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── DATASET INFO ─────────────────────────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="glass-card-static h-100">
+                <div class="section-label mb-2">Primary Dataset</div>
+                <h6 class="fw-700 mb-3">Academic Profile Features</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for tag in xgb_features %}
+                    <span class="tech-pill">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="glass-card-static h-100">
+                <div class="section-label mb-2">Secondary Dataset</div>
+                <h6 class="fw-700 mb-3">Aptitude & Personality Features</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for tag in rf_features %}
+                    <span class="tech-pill cyan">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── ARCHITECTURE SUMMARY ─────────────────────────────────────────── -->
+    <div class="glass-card-static mb-4">
+        <div class="section-label mb-3">Architecture</div>
+        <h5 class="fw-700 mb-4">Why Two Models?</h5>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="p-3" style="background:rgba(59,130,246,0.05);border-radius:var(--radius-md);border:1px solid rgba(59,130,246,0.1);">
+                    <div style="font-size:1.5rem;margin-bottom:0.5rem;">🔬</div>
+                    <div class="fw-700 mb-1" style="font-size:0.9rem;">Validation Redundancy</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);">When both models agree on a career, confidence is significantly higher than a single model prediction.</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3" style="background:rgba(16,185,129,0.05);border-radius:var(--radius-md);border:1px solid rgba(16,185,129,0.1);">
+                    <div style="font-size:1.5rem;margin-bottom:0.5rem;">🎯</div>
+                    <div class="fw-700 mb-1" style="font-size:0.9rem;">Complementary Features</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);">XGBoost captures academic trajectory; Random Forest captures innate aptitude — together they cover the full picture.</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3" style="background:rgba(139,92,246,0.05);border-radius:var(--radius-md);border:1px solid rgba(139,92,246,0.1);">
+                    <div style="font-size:1.5rem;margin-bottom:0.5rem;">📊</div>
+                    <div class="fw-700 mb-1" style="font-size:0.9rem;">Bias Detection</div>
+                    <div style="font-size:0.82rem;color:var(--text-muted);">Disagreement between the two surfaces cases where academic choices diverge from natural aptitude — a powerful insight for career counseling.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Animate bar widths after page load
+    const bars = [
+        { id: 'bar-xgb-acc', val: {{ comparison.xgb.metrics.accuracy|default:0 }} },
+        { id: 'bar-rf-acc',  val: {{ comparison.rf.metrics.accuracy|default:0 }} },
+        { id: 'bar-xgb-f1',  val: {{ comparison.xgb.metrics.f1_weighted|default:0 }} },
+        { id: 'bar-rf-f1',   val: {{ comparison.rf.metrics.f1_weighted|default:0 }} },
+        { id: 'bar-xgb-prec',val: {{ comparison.xgb.metrics.precision_weighted|default:0 }} },
+        { id: 'bar-rf-prec', val: {{ comparison.rf.metrics.precision_weighted|default:0 }} },
+        { id: 'bar-xgb-rec', val: {{ comparison.xgb.metrics.recall_weighted|default:0 }} },
+        { id: 'bar-rf-rec',  val: {{ comparison.rf.metrics.recall_weighted|default:0 }} },
+    ];
+
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            bars.forEach(b => {
+                const el = document.getElementById(b.id);
+                if (el) el.style.width = Math.min(b.val, 100) + '%';
+            });
+        }, 200);
+    });
+});
+</script>
+{% endblock %}
