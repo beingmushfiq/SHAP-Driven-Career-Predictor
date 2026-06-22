@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "trained_at": "2026-06-22T18:24:16.414252+00:00",
+  "trained_at": "2026-06-22T19:03:30.613960+00:00",
   "python_version": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
   "xgboost_version": "3.2.0",
   "sklearn_version": "1.8.0",
@@ -48,15 +48,15 @@
     "medicine_gpa_interaction"
   ],
   "best_params": {
-    "n_estimators": 200,
-    "max_depth": 3,
-    "learning_rate": 0.05201347005466847,
-    "subsample": 0.8266430968179813,
-    "colsample_bytree": 0.8031833616198236,
-    "min_child_weight": 5,
-    "gamma": 0.21615468142451388,
-    "reg_alpha": 0.015287999486134426,
-    "reg_lambda": 1.2861391590818596
+    "n_estimators": 700,
+    "max_depth": 12,
+    "learning_rate": 0.021582699137158035,
+    "subsample": 0.6034088466705282,
+    "colsample_bytree": 0.8159893624666001,
+    "min_child_weight": 2,
+    "gamma": 0.1849043636236145,
+    "reg_alpha": 0.6159416291517188,
+    "reg_lambda": 1.2292533269703432
   },
   "metrics": {
     "accuracy": 1.0,
@@ -64,6 +64,6 @@
     "precision_weighted": 1.0,
     "recall_weighted": 1.0
   },
-  "training_data_hash": "sha256:f4f49b8c72aa2422bea20db69df3f3e7ead13d82b498ecae6eb8a9966c785953",
+  "training_data_hash": "sha256:367677738802ef8eefa178b5573bab812be6ced601fee64d6c4850a057ec40cc",
   "random_seed": 42
 }

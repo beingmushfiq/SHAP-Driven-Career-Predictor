@@ -35,18 +35,21 @@ class CareerPredictionForm(forms.Form):
         min_value=0, max_value=10,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'required': 'required'})
     )
-    leadership_positions = forms.ChoiceField(
+    leadership_positions = forms.TypedChoiceField(
         label="Leadership Experience",
+        coerce=int,
         choices=[(0, 'No'), (1, 'Yes')],
         widget=forms.Select(attrs={'class': 'form-select', 'required': 'required'})
     )
-    research_experience = forms.ChoiceField(
+    research_experience = forms.TypedChoiceField(
         label="Research Experience",
+        coerce=int,
         choices=[(0, 'No'), (1, 'Yes')],
         widget=forms.Select(attrs={'class': 'form-select', 'required': 'required'})
     )
-    industry_certifications = forms.ChoiceField(
+    industry_certifications = forms.TypedChoiceField(
         label="Industry Certifications",
+        coerce=int,
         choices=[(0, 'No'), (1, 'Yes')],
         widget=forms.Select(attrs={'class': 'form-select', 'required': 'required'})
     )
