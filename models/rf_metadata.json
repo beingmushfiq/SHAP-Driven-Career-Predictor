@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "model_type": "RandomForestClassifier",
   "dataset": "career_aptitude_dataset.csv",
-  "trained_at": "2026-06-22T19:15:26.984675+00:00",
+  "trained_at": "2026-06-23T17:14:37.870477+00:00",
   "sklearn_version": "1.8.0",
   "n_features": 19,
   "feature_names": [
@@ -52,19 +52,19 @@
   ],
   "best_params": {
     "n_estimators": 200,
-    "max_depth": 15,
-    "min_samples_split": 7,
+    "max_depth": null,
+    "min_samples_split": 8,
     "min_samples_leaf": 1,
     "max_features": "sqrt",
-    "class_weight": null
+    "class_weight": "balanced_subsample"
   },
   "metrics": {
     "accuracy": 0.938095,
-    "f1_weighted": 0.938043,
-    "precision_weighted": 0.938409,
+    "f1_weighted": 0.938105,
+    "precision_weighted": 0.938553,
     "recall_weighted": 0.938095,
-    "cv_accuracy_mean": 0.920833,
-    "cv_accuracy_std": 0.011845
+    "cv_accuracy_mean": 0.916667,
+    "cv_accuracy_std": 0.009781
   },
   "random_seed": 42
 }
