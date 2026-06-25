@@ -378,12 +378,18 @@ class ModelTrainer:
         Returns:
             Dictionary with CV score statistics.
         """
+        from sklearn.base import clone as sklearn_clone
+
         cv = StratifiedKFold(
             n_splits=Config.TUNING_CV_FOLDS,
             shuffle=True,
             random_state=Config.RANDOM_SEED,
         )
-        
+
+        # Clone model without early stopping (cross_val_score has no eval_set)
+        cv_model = sklearn_clone(model)
+        cv_model.set_params(early_stopping_rounds=None)
+
         # Compute CV scores using multiple metrics
         metrics_dict = {
             'accuracy': 'accuracy',
@@ -396,7 +402,7 @@ class ModelTrainer:
         logger.info("Computing cross-validation score distribution...")
         
         for metric_name, scoring in metrics_dict.items():
-            scores = cross_val_score(model, X_train, y_train, cv=cv, scoring=scoring, n_jobs=-1)
+            scores = cross_val_score(cv_model, X_train, y_train, cv=cv, scoring=scoring, n_jobs=-1)
             cv_results[metric_name] = {
                 'mean': scores.mean(),
                 'std': scores.std(),
