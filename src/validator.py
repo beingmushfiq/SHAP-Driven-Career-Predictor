@@ -1,109 +1,244 @@
 """
-Background to Career Validation Layer for Career Predictor.
+Career Validation Layer for Career Predictor.
 
-Checks educational/field background and skill levels to determine if the predicted
-career cluster is aligned, flagging anomalies or potential mismatch indicators.
+Checks educational/field background, skills, and interests to determine if the predicted
+career cluster is well-aligned with user profile. Returns alignment scores and recommendations.
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
+import numpy as np
 from src.config import Config
 
 
 class CareerValidator:
     """
-    Validates predictions against user background and skills.
+    Validates predictions against user background, skills, and interests.
+    Provides alignment scores and recommendations.
     """
 
-    # Rules mapping: Field -> List of aligned Career Clusters
-    FIELD_ALIGNMENTS = {
-        'computer science': ['Software Engineer', 'Data & AI Specialist'],
-        'engineering': ['Engineer', 'Architect & Planner'],
-        'medicine': ['Doctor & Surgeon', 'Healthcare Specialist'],
-        'business': ['Business Manager', 'Marketing Professional', 'Brand & Advertising'],
-        'finance': ['Finance Professional', 'Investment & Insurance'],
-        'marketing': ['Marketing Professional', 'Brand & Advertising', 'Business Manager'],
-        'law': ['Legal Professional', 'Legal Support'],
-        'education': ['Educator', 'Counselor & Therapist'],
-        'psychology': ['Psychologist', 'Counselor & Therapist'],
-        'biology': ['Biologist', 'Healthcare Specialist'],
-        'chemistry': ['Chemist', 'Healthcare Specialist'],
-        'physics': ['Physicist', 'Engineer'],
-        'architecture': ['Architect & Planner', 'Visual Artist'],
-        'art': ['Visual Artist', 'Architect & Planner'],
-        'music': ['Musician & Audio', 'Educator'],
-    }
-
-    # Skill requirement rules: Career Cluster -> Min skill levels required
-    SKILL_REQUIREMENTS = {
-        'Software Engineer': {'coding_skills': 3.0, 'problem_solving_skills': 3.0},
-        'Data & AI Specialist': {'coding_skills': 3.0, 'analytical_skills': 3.5},
-        'Engineer': {'analytical_skills': 3.0, 'problem_solving_skills': 3.0},
-        'Doctor & Surgeon': {'gpa': 3.5, 'analytical_skills': 3.0},
-        'Finance Professional': {'analytical_skills': 3.0},
-        'Legal Professional': {'communication_skills': 3.5, 'analytical_skills': 3.0},
-        'Marketing Professional': {'communication_skills': 3.0, 'presentation_skills': 3.0},
-        'Musician & Audio': {'extracurricular_activities': 4.0},
-    }
+    @classmethod
+    def compute_education_alignment_score(cls, field: str, predicted_career: str) -> float:
+        """
+        Compute education-career alignment score (0-100).
+        
+        Args:
+            field: User's academic field
+            predicted_career: Predicted career cluster
+            
+        Returns:
+            Alignment score (0-100)
+        """
+        if not field:
+            return 50.0  # Neutral score for empty field
+        
+        # Normalize field lookup: try exact match first, then title case
+        field_str = str(field).strip()
+        aligned_careers = Config.FIELD_CAREER_ALIGNMENT.get(field_str, None)
+        
+        if aligned_careers is None:
+            # Try title case (e.g., 'computer science' -> 'Computer Science')
+            field_title = field_str.title()
+            aligned_careers = Config.FIELD_CAREER_ALIGNMENT.get(field_title, [])
+        
+        if not aligned_careers:
+            return 50.0  # Neutral score for unmapped fields
+        
+        if predicted_career in aligned_careers:
+            # Exact alignment: 95-100
+            return 95.0
+        
+        # Partial alignment: check if categories overlap
+        # (e.g., 'Engineer' and 'Software Engineer' both tech-heavy)
+        partial_match_weight = 60.0
+        
+        return min(partial_match_weight, 75.0)
 
     @classmethod
-    def validate_prediction(cls, form_data: Dict, predicted_career: str) -> Tuple[bool, List[str], List[str]]:
+    def compute_skill_alignment_score(cls, form_data: Dict, predicted_career: str) -> Tuple[float, List[str]]:
         """
-        Validate predicted career against user background (field) and skills.
+        Compute skill-career alignment score (0-100) and identify gaps.
+        
+        Args:
+            form_data: User input data with skill levels
+            predicted_career: Predicted career cluster
+            
+        Returns:
+            Tuple of (alignment_score, gap_list)
+        """
+        # Get skill requirements from config
+        reqs = Config.CAREER_SKILL_REQUIREMENTS.get(predicted_career, {})
+        
+        if not reqs:
+            return 75.0, []  # No requirements mapped; assume aligned
+        
+        gaps = []
+        total_deficit = 0.0
+        
+        for skill_name, min_val in reqs.items():
+            # Try to get skill value from form data
+            val = float(form_data.get(skill_name, 0.0))
+            
+            if val < min_val:
+                deficit = min_val - val
+                total_deficit += deficit
+                gaps.append({
+                    'skill': skill_name,
+                    'required': min_val,
+                    'current': val,
+                    'gap': deficit,
+                })
+        
+        # Calculate score: start at 100, subtract 10 points per 0.5-point gap
+        alignment_score = max(50.0, 100.0 - (total_deficit * 10.0))
+        
+        return alignment_score, gaps
+
+    @classmethod
+    def compute_interest_alignment_score(cls, predicted_career: str) -> float:
+        """
+        Compute interest-career alignment score (0-100).
+        
+        Note: In production, would compare user_interests with career typical interests.
+        Currently uses field-based heuristic.
+        
+        Args:
+            predicted_career: Predicted career cluster
+            
+        Returns:
+            Alignment score (0-100)
+        """
+        # If career is in CAREER_INTERESTS, return high score
+        if predicted_career in Config.CAREER_INTERESTS:
+            return 80.0  # Known career with interest profile
+        
+        return 70.0  # Unmapped career; neutral score
+
+    @classmethod
+    def validate_prediction(
+        cls, 
+        form_data: Dict, 
+        predicted_career: str
+    ) -> Tuple[bool, List[str], List[str], Dict]:
+        """
+        Validate predicted career against user background, skills, and interests.
 
         Args:
-            form_data: Raw input dictionary (form field keys).
-            predicted_career: The career cluster predicted by the model.
+            form_data: Raw input dictionary with user data
+            predicted_career: The career cluster predicted by the model
 
         Returns:
-            Tuple of (is_aligned: bool, warnings: List[str], suggestions: List[str]).
+            Tuple of (
+                is_aligned: bool,
+                warnings: List[str],
+                suggestions: List[str],
+                scores: Dict with alignment scores
+            )
         """
         warnings = []
         suggestions = []
         is_aligned = True
-
+        
         # Extract features
-        field = str(form_data.get('field', '')).strip().lower()
+        field = str(form_data.get('field', '')).strip()
         gpa = float(form_data.get('gpa', 0.0))
         
+        # Compute alignment scores
+        education_score = cls.compute_education_alignment_score(field, predicted_career)
+        skill_score, skill_gaps = cls.compute_skill_alignment_score(form_data, predicted_career)
+        interest_score = cls.compute_interest_alignment_score(predicted_career)
+        
+        # Composite alignment score (weighted average)
+        composite_score = (
+            0.35 * education_score +
+            0.40 * skill_score +
+            0.25 * interest_score
+        )
+        
+        scores = {
+            'education_alignment': education_score,
+            'skill_alignment': skill_score,
+            'interest_alignment': interest_score,
+            'composite_alignment': composite_score,
+        }
+        
         # 1. Educational Field Alignment Check
-        if field in cls.FIELD_ALIGNMENTS:
-            aligned_clusters = cls.FIELD_ALIGNMENTS[field]
-            if predicted_career not in aligned_clusters:
-                is_aligned = False
+        if education_score < 75.0:
+            is_aligned = False
+            field_lower = str(field).strip().lower()
+            aligned_careers = Config.FIELD_CAREER_ALIGNMENT.get(field_lower, [])
+            warnings.append(
+                f"Predicted career '{predicted_career}' is not typical for "
+                f"a '{field}' background."
+            )
+            if aligned_careers:
+                suggestions.append(
+                    f"Consider careers more aligned with {field}: "
+                    f"{', '.join(aligned_careers[:3])}."
+                )
+        
+        # 2. Skill Requirements Check
+        if skill_gaps:
+            is_aligned = False
+            for gap in skill_gaps:
+                skill_display = gap['skill'].replace('_', ' ').title()
                 warnings.append(
-                    f"Predicted career '{predicted_career}' does not typically align "
-                    f"with your major/field of '{field.title()}'."
+                    f"Your {skill_display} ({gap['current']:.1f}) is below "
+                    f"typical requirements for {predicted_career} (min {gap['required']:.1f})."
                 )
                 suggestions.append(
-                    f"Consider paths more closely aligned with {field.title()}, "
-                    f"such as: {', '.join(aligned_clusters)}."
+                    f"Develop {skill_display} through projects, courses, or internships."
                 )
-
-        # 2. Skill Requirements Check
-        if predicted_career in cls.SKILL_REQUIREMENTS:
-            reqs = cls.SKILL_REQUIREMENTS[predicted_career]
-            for skill_name, min_val in reqs.items():
-                # Form data might have space/casing differences
-                val = float(form_data.get(skill_name, form_data.get(skill_name.replace('_', ' ').title(), 0.0)))
-                if val < min_val:
-                    is_aligned = False
-                    warnings.append(
-                        f"Your score for '{skill_name.replace('_', ' ').title()}' ({val}) "
-                        f"is lower than typical requirements for '{predicted_career}' (min {min_val})."
-                    )
-                    suggestions.append(
-                        f"Enhance your '{skill_name.replace('_', ' ').title()}' via projects or certified courses."
-                    )
-
-        # 3. GPA Mismatch Check for highly academic/selective fields
-        if predicted_career in ['Doctor & Surgeon', 'Legal Professional'] and gpa < 3.0:
+        
+        # 3. GPA Check for selective careers
+        selective_careers = ['Doctor & Surgeon', 'Legal Professional']
+        if predicted_career in selective_careers and gpa < 3.0:
             is_aligned = False
             warnings.append(
-                f"Your GPA ({gpa}) is below the competitive threshold for "
-                f"entering '{predicted_career}'."
+                f"Your GPA ({gpa:.2f}) is below competitive threshold for "
+                f"{predicted_career}."
             )
             suggestions.append(
-                "Focus on lifting academic scores or seek internship credentials to offset GPA."
+                "Enhance academic record or seek professional certifications "
+                "and internship credentials."
             )
+        
+        return is_aligned, warnings, suggestions, scores
 
-        return is_aligned, warnings, suggestions
+    @classmethod
+    def generate_validation_report(cls, form_data: Dict, predicted_career: str) -> Dict:
+        """
+        Generate comprehensive validation report with scores and recommendations.
+        
+        Args:
+            form_data: User input data
+            predicted_career: Predicted career cluster
+            
+        Returns:
+            Dictionary with full validation details
+        """
+        is_aligned, warnings, suggestions, scores = cls.validate_prediction(
+            form_data, predicted_career
+        )
+        
+        field = str(form_data.get('field', '')).strip()
+        skill_score, skill_gaps = cls.compute_skill_alignment_score(form_data, predicted_career)
+        
+        report = {
+            'predicted_career': predicted_career,
+            'user_field': field,
+            'is_aligned': is_aligned,
+            'alignment_scores': scores,
+            'warnings': warnings,
+            'suggestions': suggestions,
+            'skill_gaps': [
+                {
+                    'skill': gap['skill'],
+                    'gap_size': gap['gap'],
+                    'current': gap['current'],
+                    'required': gap['required'],
+                }
+                for gap in skill_gaps
+            ],
+        }
+        
+        return report

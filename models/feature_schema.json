@@ -1,8 +1,7 @@
 {
   "version": "1.0.0",
-  "feature_count": 22,
+  "feature_count": 21,
   "feature_names": [
-    "field",
     "gpa",
     "extracurricular_activities",
     "internships",
@@ -21,12 +20,11 @@
     "analytical_composite",
     "communication_composite",
     "experience_score",
-    "cs_coding_interaction",
-    "finance_analytical_interaction",
-    "medicine_gpa_interaction"
+    "skills_intelligence_score",
+    "interest_compatibility_score",
+    "career_suitability_index"
   ],
   "feature_types": {
-    "field": "categorical",
     "gpa": "numerical",
     "extracurricular_activities": "numerical",
     "internships": "numerical",
@@ -45,8 +43,8 @@
     "analytical_composite": "numerical",
     "communication_composite": "numerical",
     "experience_score": "numerical",
-    "cs_coding_interaction": "numerical",
-    "finance_analytical_interaction": "numerical",
-    "medicine_gpa_interaction": "numerical"
+    "skills_intelligence_score": "numerical",
+    "interest_compatibility_score": "numerical",
+    "career_suitability_index": "numerical"
   }
 }

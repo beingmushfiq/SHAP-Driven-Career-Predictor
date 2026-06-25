@@ -16,6 +16,7 @@ from xgboost import XGBClassifier
 from src.config import Config
 from src.processor import encode_single_input
 from src.utils import get_logger
+from src.validator import CareerValidator
 
 logger = get_logger(__name__, Config.LOG_DIR)
 
@@ -103,7 +104,17 @@ class CareerPredictor:
         return career_label, proba
 
     def get_top_predictions(self, form_data: Dict, n: int = 3) -> List[Dict]:
-        """Get top-N career predictions with confidence scores and local SHAP explanations."""
+        """
+        Get top-N career predictions with confidence scores, SHAP explanations,
+        and validation alignment scores.
+        
+        Args:
+            form_data: User input data dictionary
+            n: Number of top predictions to return (default: 3)
+            
+        Returns:
+            List of prediction dictionaries with confidence, factors, and alignment scores
+        """
         _, proba = self.predict(form_data)
         top_indices = np.argsort(proba)[::-1][:n]
         
@@ -126,11 +137,20 @@ class CareerPredictor:
                 for item in positive_factors
             ]
             
+            # Get validation scores for this prediction
+            validation_report = CareerValidator.generate_validation_report(
+                form_data, label
+            )
+            
             results.append({
                 'career': label,
                 'probability': round(confidence * 100, 2),
                 'factors': factors_summary,
-                'interpretations': interpretations
+                'interpretations': interpretations,
+                'alignment_scores': validation_report.get('alignment_scores', {}),
+                'warnings': validation_report.get('warnings', []),
+                'suggestions': validation_report.get('suggestions', []),
+                'is_aligned': validation_report.get('is_aligned', True),
             })
         return results
 
@@ -143,6 +163,19 @@ class CareerPredictor:
         if self._feature_schema is None:
             return []
         return self._feature_schema['feature_names']
+
+    def get_prediction_validation(self, form_data: Dict, career: str) -> Dict:
+        """
+        Get comprehensive validation report for a specific career prediction.
+        
+        Args:
+            form_data: User input data
+            career: Career label to validate
+            
+        Returns:
+            Validation report with alignment scores and recommendations
+        """
+        return CareerValidator.generate_validation_report(form_data, career)
 
     @classmethod
     def reset(cls):

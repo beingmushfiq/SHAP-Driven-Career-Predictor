@@ -56,12 +56,34 @@ class Config:
     RANDOM_SEED = int(os.environ.get('RANDOM_SEED', 42))
     TEST_SIZE = float(os.environ.get('TEST_SIZE', 0.2))
     SHAP_BACKGROUND_SIZE = int(os.environ.get('SHAP_BACKGROUND_SIZE', 200))
+    
+    # ─── Data Preprocessing & Quality Flags ─────────────────────────
+    ENABLE_SCALING = os.environ.get('ENABLE_SCALING', 'false').lower() == 'true'  # RobustScaler for preprocessing
+    ENABLE_KNN_IMPUTATION = os.environ.get('ENABLE_KNN_IMPUTATION', 'true').lower() == 'true'  # k=5 KNN imputation
+    ENABLE_ISOLATION_FOREST = os.environ.get('ENABLE_ISOLATION_FOREST', 'true').lower() == 'true'  # Outlier detection
+    ENABLE_DATA_QUALITY_REPORT = os.environ.get('ENABLE_DATA_QUALITY_REPORT', 'true').lower() == 'true'  # Quality metrics
+    
+    # ─── Class Imbalance Handling ──────────────────────────────────
+    REBALANCE_METHOD = os.environ.get('REBALANCE_METHOD', 'smote')  # 'smote', 'adasyn', 'borderline_smote'
+    
+    # ─── Monotone Constraints (XGBoost) ────────────────────────────
+    # Maps feature names to monotone constraint direction: 1=increasing, -1=decreasing, 0=no constraint
+    MONOTONE_CONSTRAINTS = {
+        'gpa': 1,  # Higher GPA → better career fit
+        'coding_skills': 1,
+        'analytical_skills': 1,
+        'problem_solving_skills': 1,
+        'leadership_positions': 1,
+        'experience_score': 1,
+        'analytical_composite': 1,
+        'communication_composite': 1,
+    }
 
     # ─── Hyperparameter Tuning ──────────────────────────────────────
     TUNING_N_ITER = int(os.environ.get('TUNING_N_ITER', 50))
-    TUNING_CV_FOLDS = int(os.environ.get('TUNING_CV_FOLDS', 5))
+    TUNING_CV_FOLDS = int(os.environ.get('TUNING_CV_FOLDS', 3))
     TUNING_METHOD = os.environ.get('TUNING_METHOD', 'bayesian')  # 'random', 'grid', 'bayesian'
-    OPTUNA_N_TRIALS = int(os.environ.get('OPTUNA_N_TRIALS', 100))
+    OPTUNA_N_TRIALS = int(os.environ.get('OPTUNA_N_TRIALS', 10))
 
     PARAM_GRID = {
         'n_estimators': [100, 200, 300, 500, 700],
@@ -88,8 +110,72 @@ class Config:
     # ─── Ensemble Configuration ─────────────────────────────────────
     ENSEMBLE_METHOD = os.environ.get('ENSEMBLE_METHOD', 'soft_voting')  # soft_voting, hard_voting, weighted_voting, stacking
     ENSEMBLE_WEIGHTS = None  # Auto-computed from CV scores if None
+    
+    # ─── Career Validation & Alignment ────────────────────────────────
+    # Map academic fields to compatible career clusters
+    FIELD_CAREER_ALIGNMENT = {
+        'Computer Science': ['Software Engineer', 'Data & AI Specialist', 'Engineer'],
+        'Engineering': ['Engineer', 'Software Engineer', 'Data & AI Specialist'],
+        'Business': ['Business Manager', 'Marketing Professional', 'Finance Professional', 'Manager'],
+        'Finance': ['Finance Professional', 'Investment & Insurance', 'Business Manager'],
+        'Psychology': ['Psychologist', 'Counselor & Therapist', 'Healthcare Specialist'],
+        'Biology': ['Biologist', 'Healthcare Specialist', 'Doctor & Surgeon'],
+        'Chemistry': ['Chemist', 'Engineer', 'Biologist'],
+        'Physics': ['Physicist', 'Engineer', 'Data & AI Specialist'],
+        'Medicine': ['Doctor & Surgeon', 'Healthcare Specialist', 'Psychologist'],
+        'Law': ['Legal Professional', 'Business Manager'],
+        'Marketing': ['Marketing Professional', 'Brand & Advertising', 'Business Manager'],
+        'Education': ['Educator', 'Psychologist', 'Business Manager'],
+        'Art': ['Visual Artist', 'Brand & Advertising', 'Architect & Planner'],
+        'Architecture': ['Architect & Planner', 'Engineer'],
+        'Music': ['Musician & Audio', 'Educator', 'Visual Artist'],
+    }
+    
+    # Map careers to typical interests/domains
+    CAREER_INTERESTS = {
+        'Software Engineer': ['Technology', 'Problem-solving', 'Innovation', 'Coding'],
+        'Data & AI Specialist': ['Data Analysis', 'Machine Learning', 'Innovation', 'Research'],
+        'Engineer': ['Technology', 'Design', 'Innovation', 'Problem-solving'],
+        'Doctor & Surgeon': ['Healthcare', 'Science', 'Helping People', 'Research'],
+        'Psychologist': ['Psychology', 'Helping People', 'Research', 'Human Behavior'],
+        'Marketing Professional': ['Business', 'Communication', 'Creativity', 'People'],
+        'Finance Professional': ['Finance', 'Numbers', 'Analysis', 'Strategy'],
+        'Educator': ['Teaching', 'Communication', 'Helping People', 'Knowledge'],
+        'Architect & Planner': ['Design', 'Innovation', 'Creativity', 'Engineering'],
+        'Legal Professional': ['Law', 'Analysis', 'Communication', 'Ethics'],
+        'Business Manager': ['Leadership', 'Strategy', 'People', 'Business'],
+        'Visual Artist': ['Creativity', 'Art', 'Design', 'Innovation'],
+        'Musician & Audio': ['Music', 'Creativity', 'Performance', 'Art'],
+        'Biologist': ['Science', 'Nature', 'Research', 'Innovation'],
+        'Chemist': ['Science', 'Research', 'Problem-solving', 'Innovation'],
+    }
+    
+    # Minimum skill requirements per career (for validation checks)
+    CAREER_SKILL_REQUIREMENTS = {
+        'Software Engineer': {'coding_skills': 3.5, 'problem_solving_skills': 3.5, 'analytical_skills': 3.0},
+        'Data & AI Specialist': {'analytical_skills': 3.5, 'problem_solving_skills': 3.5, 'coding_skills': 3.0},
+        'Engineer': {'problem_solving_skills': 3.0, 'analytical_skills': 3.0, 'teamwork_skills': 2.5},
+        'Doctor & Surgeon': {'analytical_skills': 3.0, 'communication_skills': 3.0, 'problem_solving_skills': 3.5},
+        'Psychologist': {'communication_skills': 3.5, 'analytical_skills': 3.0, 'teamwork_skills': 3.0},
+        'Marketing Professional': {'communication_skills': 3.5, 'creativity_skills': 3.0, 'presentation_skills': 3.0},
+        'Finance Professional': {'analytical_skills': 3.5, 'problem_solving_skills': 3.0, 'communication_skills': 2.5},
+        'Educator': {'communication_skills': 3.5, 'presentation_skills': 3.5, 'teamwork_skills': 3.0},
+        'Architect & Planner': {'analytical_skills': 3.0, 'creativity_skills': 3.5, 'problem_solving_skills': 3.0},
+        'Legal Professional': {'analytical_skills': 3.5, 'communication_skills': 3.5, 'problem_solving_skills': 3.0},
+        'Business Manager': {'communication_skills': 3.5, 'leadership_positions': 1, 'teamwork_skills': 3.5},
+    }
 
     # ─── XGBoost Base Parameters ────────────────────────────────────
+    # Features to exclude from training (field-derived / leaky)
+    DROP_FEATURES = [
+        'field',
+        'education_alignment_score',
+        'medicine_gpa_interaction',
+        'finance_analytical_interaction',
+        'cs_coding_interaction',
+        'leadership_creativity_interaction',
+    ]
+
     XGB_BASE_PARAMS = {
         'objective': 'multi:softprob',
         'eval_metric': 'mlogloss',
@@ -97,7 +183,9 @@ class Config:
         'random_state': RANDOM_SEED,
         'n_jobs': -1,
         'verbosity': 0,
+        'tree_method': 'hist',
     }
+    EARLY_STOPPING_ROUNDS = 20
 
     # ─── Feature Definitions ────────────────────────────────────────
     # These define the expected features and their types/ranges.
@@ -125,6 +213,10 @@ class Config:
         'cs_coding_interaction',
         'finance_analytical_interaction',
         'medicine_gpa_interaction',
+        'skills_intelligence_score',        # NEW: Weighted skill representation
+        'education_alignment_score',        # NEW: Field-career compatibility
+        'interest_compatibility_score',     # NEW: Interest-field alignment
+        'career_suitability_index',         # NEW: Composite suitability score
     ]
 
     CATEGORICAL_FEATURES = [

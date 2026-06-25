@@ -71,23 +71,37 @@ class SHAPExplainer:
             schema = json.load(f)
         self._feature_names = schema['feature_names']
 
-        self._explainer = shap.TreeExplainer(self._model, self._background)
+        # Pass data=None so SHAP takes the XGBoost-native fast path, which
+        # is the only path that correctly handles categorical splits.
+        # (Passing background data causes fallthrough to C-ext that raises
+        # NotImplementedError for categorical models.)
+        self._explainer = shap.TreeExplainer(
+            self._model,
+            feature_perturbation="tree_path_dependent"
+        )
         self._loaded = True
         logger.info(f"SHAP explainer initialized (background shape: {self._background.shape})")
 
     def compute_shap_values(self, X: np.ndarray):
-        """Compute SHAP values for input X with caching."""
+        """Compute SHAP values for input X with caching.
+        Returns a raw numpy array: (samples, features) or (samples, features, classes).
+        Uses .shap_values() instead of .__call__() to avoid the Explanation
+        wrapper path that raises NotImplementedError for categorical XGBoost models.
+        """
         if not self._loaded:
             raise RuntimeError("SHAP explainer not initialized.")
         
         # Simple cache to avoid re-computing for same input in one request
         if self._last_X is not None and np.array_equal(X, self._last_X):
             return self._last_shap_values
-            
-        shap_values = self._explainer(X)
+
+        raw_sv = self._explainer.shap_values(X)
+        # Normalise: if SHAP returns a list (one array per class), stack to 3-D array
+        if isinstance(raw_sv, list):
+            raw_sv = np.stack(raw_sv, axis=-1)  # (samples, features, classes)
         self._last_X = X.copy()
-        self._last_shap_values = shap_values
-        return shap_values
+        self._last_shap_values = raw_sv
+        return raw_sv
 
     def global_summary_plot(self, X_sample: Optional[np.ndarray] = None) -> Path:
         """
@@ -98,25 +112,31 @@ class SHAPExplainer:
             X_sample = self._background
 
         logger.info("Generating global SHAP summary plot...")
-        shap_values = self._explainer(X_sample)
+        # Use shap_values() (returns raw array) instead of __call__() to avoid
+        # the Explanation wrapper path which also checks categorical support.
+        raw_sv = self._explainer.shap_values(X_sample)
 
-        # Handle multiclass: take the mean absolute SHAP value across classes
-        if len(shap_values.shape) == 3:
-            # shap_values.values is (samples, features, classes)
-            # We want (samples, features) where each value is mean(|SHAP|) across classes
-            import copy
-            sv_copy = copy.deepcopy(shap_values)
-            sv_copy.values = np.abs(sv_copy.values).mean(axis=2)
-            # Also update base_values if needed, but for bar plot it's not strictly necessary
-            # if hasattr(sv_copy, 'base_values'):
-            #     sv_copy.base_values = sv_copy.base_values.mean(axis=1)
-            shap_values = sv_copy
+        # Handle multiclass: shap_values() returns (samples, features, classes)
+        # Compute mean |SHAP| across classes → (samples, features)
+        if isinstance(raw_sv, list):
+            # older SHAP versions return a list of arrays, one per class
+            mean_abs_sv = np.abs(np.stack(raw_sv, axis=-1)).mean(axis=2)
+        elif len(raw_sv.shape) == 3:
+            mean_abs_sv = np.abs(raw_sv).mean(axis=2)
+        else:
+            mean_abs_sv = np.abs(raw_sv)
 
         Config.SHAP_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
         save_path = Config.SHAP_PLOTS_DIR / 'global_summary.png'
 
         fig, ax = plt.subplots(figsize=(12, 8))
-        shap.plots.bar(shap_values, max_display=len(self._feature_names), show=False)
+        # Build a simple horizontal bar chart from the mean absolute SHAP values
+        feature_importance = mean_abs_sv.mean(axis=0)
+        sort_idx = np.argsort(feature_importance)
+        sorted_names = [self._feature_names[i] for i in sort_idx]
+        sorted_vals = feature_importance[sort_idx]
+        ax.barh(sorted_names, sorted_vals, color='#e74c3c', alpha=0.85)
+        ax.set_xlabel('Mean |SHAP Value|')
         plt.title('Global Feature Importance (SHAP)', fontsize=14, fontweight='bold')
         plt.tight_layout()
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
@@ -140,20 +160,30 @@ class SHAPExplainer:
             prediction_id = str(uuid.uuid4())[:8]
 
         logger.info(f"Generating SHAP waterfall plot (id={prediction_id})...")
-        shap_values = self.compute_shap_values(X_single)
+        # raw_sv is a numpy array: (1, features) or (1, features, classes)
+        raw_sv = self.compute_shap_values(X_single)
 
         Config.SHAP_PLOTS_DIR.mkdir(parents=True, exist_ok=True)
         save_path = Config.SHAP_PLOTS_DIR / f'shap_waterfall_{prediction_id}.png'
 
-        fig, ax = plt.subplots(figsize=(12, 8))
-        # For multiclass, use the predicted class
-        if len(shap_values.shape) == 3:
-            predicted_class = np.argmax(shap_values.values[0].sum(axis=0))
-            sv = shap_values[0, :, predicted_class]
+        # Extract SHAP values for the predicted class
+        if raw_sv.ndim == 3:
+            # (1, features, classes) — pick the class with highest summed SHAP
+            predicted_class = int(np.argmax(raw_sv[0].sum(axis=0)))
+            sv_values = raw_sv[0, :, predicted_class]          # (features,)
         else:
-            sv = shap_values[0]
+            sv_values = raw_sv[0]                              # (features,)
 
-        shap.plots.waterfall(sv, max_display=len(self._feature_names), show=False)
+        # Build a waterfall-style bar chart manually (shap.plots.waterfall
+        # requires an Explanation object which needs the __call__ path).
+        fig, ax = plt.subplots(figsize=(12, 8))
+        sort_idx = np.argsort(np.abs(sv_values))
+        sorted_names = [self._feature_names[i] for i in sort_idx]
+        sorted_vals = sv_values[sort_idx]
+        colors = ['#e74c3c' if v > 0 else '#3498db' for v in sorted_vals]
+        ax.barh(sorted_names, sorted_vals, color=colors, alpha=0.85)
+        ax.axvline(0, color='black', linewidth=0.8)
+        ax.set_xlabel('SHAP Value (impact on model output)')
         plt.title('How This Prediction Was Made (SHAP)', fontsize=13, fontweight='bold')
         plt.tight_layout()
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
@@ -165,31 +195,37 @@ class SHAPExplainer:
     def get_local_interpretations(self, X_single: np.ndarray, class_idx: Optional[int] = None) -> List[dict]:
         """
         Get the top influential features and their SHAP impacts for a single prediction.
-        Returns a list of dicts: [{'feature': 'Math', 'impact': 12.5}, ...]
-        """
-        shap_values = self.compute_shap_values(X_single)
-        
-        # For multiclass, use the predicted class if class_idx not provided
-        if len(shap_values.shape) == 3:
-            target_class = class_idx if class_idx is not None else np.argmax(shap_values.values[0].sum(axis=0))
-            sv_values = shap_values.values[0, :, target_class]
-        else:
-            sv_values = shap_values.values[0]
+        Returns only features that positively support the predicted career.
 
-        # Calculate percentages based on sum of absolute SHAP values
-        total_impact = np.sum(np.abs(sv_values)) + 1e-10
-        
+        Returns a list of dicts:
+            [{'feature': 'Coding Skills', 'impact': 22.5}, ...]
+        where impact is always a positive percentage representing how much that
+        feature contributed *towards* the predicted career.
+        """
+        raw_sv = self.compute_shap_values(X_single)
+
+        # For multiclass, use the predicted class if class_idx not provided
+        if raw_sv.ndim == 3:
+            target_class = class_idx if class_idx is not None else int(np.argmax(raw_sv[0].sum(axis=0)))
+            sv_values = raw_sv[0, :, target_class]   # (features,)
+        else:
+            sv_values = raw_sv[0]                    # (features,)
+
+        # Calculate contribution percentages using only positive SHAP values
+        # (features that push the prediction TOWARDS the predicted class)
+        positive_sum = np.sum(sv_values[sv_values > 0]) + 1e-10
+
         interpretations = []
         for i, val in enumerate(sv_values):
-            if val != 0:
-                impact_pct = (val / total_impact) * 100
+            if val > 0:
+                impact_pct = (val / positive_sum) * 100
                 interpretations.append({
                     'feature': self._feature_names[i].replace('_', ' ').title(),
-                    'impact': impact_pct
+                    'impact': round(impact_pct, 2),
                 })
-        
-        # Sort by absolute impact descending
-        interpretations.sort(key=lambda x: abs(x['impact']), reverse=True)
+
+        # Sort by impact descending (strongest positive contributors first)
+        interpretations.sort(key=lambda x: x['impact'], reverse=True)
         return interpretations
 
     def feature_importance_comparison(self) -> Path:
@@ -202,11 +238,13 @@ class SHAPExplainer:
         xgb_importance = self._model.feature_importances_
 
         # SHAP-based importance (mean |SHAP value|)
-        shap_values = self._explainer(self._background)
-        if len(shap_values.shape) == 3:
-            shap_importance = np.abs(shap_values.values).mean(axis=(0, 2))
+        raw_sv = self._explainer.shap_values(self._background)
+        if isinstance(raw_sv, list):
+            shap_importance = np.abs(np.stack(raw_sv, axis=-1)).mean(axis=(0, 2))
+        elif len(raw_sv.shape) == 3:
+            shap_importance = np.abs(raw_sv).mean(axis=(0, 2))
         else:
-            shap_importance = np.abs(shap_values.values).mean(axis=0)
+            shap_importance = np.abs(raw_sv).mean(axis=0)
 
         # Normalize both to [0, 1]
         xgb_norm = xgb_importance / (xgb_importance.max() + 1e-10)
@@ -259,13 +297,15 @@ def select_features_by_shap(
     logger.info("Computing SHAP feature importance for feature selection...")
     # Use a subset of background data for speed in TreeExplainer
     bg_sample = X[:min(200, X.shape[0])]
-    explainer = shap.TreeExplainer(model, bg_sample)
-    shap_values = explainer(X[:min(500, X.shape[0])])
-    
-    if len(shap_values.shape) == 3:
-        shap_importance = np.abs(shap_values.values).mean(axis=(0, 2))
+    explainer = shap.TreeExplainer(model, feature_perturbation="tree_path_dependent")
+    raw_sv = explainer.shap_values(X[:min(500, X.shape[0])])
+    if isinstance(raw_sv, list):
+        raw_sv = np.stack(raw_sv, axis=-1)  # (samples, features, classes)
+
+    if raw_sv.ndim == 3:
+        shap_importance = np.abs(raw_sv).mean(axis=(0, 2))
     else:
-        shap_importance = np.abs(shap_values.values).mean(axis=0)
+        shap_importance = np.abs(raw_sv).mean(axis=0)
         
     # Normalize to relative contribution
     shap_norm = shap_importance / (shap_importance.sum() + 1e-10)

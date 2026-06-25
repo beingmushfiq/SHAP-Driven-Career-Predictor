@@ -1,0 +1,51 @@
+{
+  "best_method": "smote",
+  "all_results": {
+    "smote": {
+      "method": "smote",
+      "cv_accuracy_mean": 1.0,
+      "cv_accuracy_std": 0.0,
+      "cv_f1_mean": 1.0,
+      "cv_f1_std": 0.0,
+      "cv_precision_mean": 1.0,
+      "cv_recall_mean": 1.0,
+      "test_accuracy": 0.9988888888888889,
+      "test_f1": 0.9988143971038709,
+      "test_precision": 0.9989082125603864,
+      "test_recall": 0.9988888888888889,
+      "train_size": 8512,
+      "elapsed_seconds": 18.590524435043335
+    },
+    "adasyn": {
+      "method": "adasyn",
+      "cv_accuracy_mean": 1.0,
+      "cv_accuracy_std": 0.0,
+      "cv_f1_mean": 1.0,
+      "cv_f1_std": 0.0,
+      "cv_precision_mean": 1.0,
+      "cv_recall_mean": 1.0,
+      "test_accuracy": 0.9988888888888889,
+      "test_f1": 0.9988143971038709,
+      "test_precision": 0.9989082125603864,
+      "test_recall": 0.9988888888888889,
+      "train_size": 8512,
+      "elapsed_seconds": 7.268528461456299
+    },
+    "borderline_smote": {
+      "method": "borderline_smote",
+      "cv_accuracy_mean": 0.9998620689655173,
+      "cv_accuracy_std": 0.00041379310344829,
+      "cv_f1_mean": 0.9998621537157689,
+      "cv_f1_std": 0.00041353885269344024,
+      "cv_precision_mean": 0.9998650036683786,
+      "cv_recall_mean": 0.9998620689655173,
+      "test_accuracy": 0.9988888888888889,
+      "test_f1": 0.9988143971038709,
+      "test_precision": 0.9989082125603864,
+      "test_recall": 0.9988888888888889,
+      "train_size": 7256,
+      "elapsed_seconds": 6.100515365600586
+    }
+  },
+  "timestamp": "2026-06-26T01:36:29.808472"
+}

@@ -28,6 +28,7 @@ from sklearn.model_selection import (
     train_test_split,
     RandomizedSearchCV,
     StratifiedKFold,
+    cross_val_score,
 )
 from sklearn.metrics import (
     accuracy_score,
@@ -38,8 +39,9 @@ from sklearn.metrics import (
     confusion_matrix,
     ConfusionMatrixDisplay,
 )
+from sklearn.ensemble import IsolationForest
 from xgboost import XGBClassifier
-from imblearn.over_sampling import SMOTE  # type: ignore[import-untyped]
+from imblearn.over_sampling import SMOTE, ADASYN, BorderlineSMOTE  # type: ignore[import-untyped]
 
 from src.config import Config
 from src.utils import get_logger, set_seeds, compute_data_hash, format_metrics
@@ -94,7 +96,12 @@ class ModelTrainer:
 
     def rebalance_data(self, X_train: np.ndarray, y_train: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Apply IQR-based outlier detection and SMOTE oversampling.
+        Apply outlier detection and rebalancing to training data.
+        
+        Steps:
+            1. IQR-based outlier removal (class-by-class, 3.0 × IQR)
+            2. Isolation Forest for anomaly detection (if enabled)
+            3. SMOTE/ADASYN/Borderline-SMOTE oversampling
 
         Args:
             X_train: Training features.
@@ -105,11 +112,10 @@ class ModelTrainer:
         """
         logger.info("Applying data cleaning and rebalancing on training set...")
 
-        # 1. Outlier removal using IQR (3.0 * IQR) class-by-class
-        # This prevents dropping all samples of minority classes and maintains valid labels.
         original_count = X_train.shape[0]
-        keep_indices = []
         
+        # 1. IQR-based outlier removal (class-by-class)
+        keep_indices = []
         for class_label in np.unique(y_train):
             class_mask = (y_train == class_label)
             X_class = X_train[class_mask]
@@ -132,7 +138,7 @@ class ModelTrainer:
                 outliers = (col_data < lower) | (col_data > upper)
                 class_keep_mask = class_keep_mask & (~outliers)
                 
-            # Ensure we keep at least 10 samples or all of them if outlier filter is too aggressive
+            # Ensure we keep at least 10 samples
             if np.sum(class_keep_mask) >= 10:
                 indices = np.where(class_mask)[0][class_keep_mask]
             else:
@@ -141,23 +147,56 @@ class ModelTrainer:
 
         X_train_clean = X_train[keep_indices]
         y_train_clean = y_train[keep_indices]
-        logger.info(f"Outlier removal complete: {original_count} -> {X_train_clean.shape[0]} rows (dropped {original_count - X_train_clean.shape[0]} rows)")
+        removed_iqr = original_count - X_train_clean.shape[0]
+        logger.info(f"IQR-based outlier removal: {original_count} -> {X_train_clean.shape[0]} rows (removed {removed_iqr})")
 
-        # 2. SMOTE oversampling
-        smote = SMOTE(random_state=Config.RANDOM_SEED)
-        X_train_res, y_train_res = smote.fit_resample(X_train_clean, y_train_clean)
+        # 2. Isolation Forest outlier detection (if enabled)
+        if Config.ENABLE_ISOLATION_FOREST and X_train_clean.shape[0] > 50:
+            iso_forest = IsolationForest(
+                contamination=0.05,  # Expect ~5% outliers
+                random_state=Config.RANDOM_SEED,
+                n_jobs=-1
+            )
+            outlier_predictions = iso_forest.fit_predict(X_train_clean)
+            clean_mask = outlier_predictions != -1  # -1 indicates outlier
+            
+            X_train_clean = X_train_clean[clean_mask]
+            y_train_clean = y_train_clean[clean_mask]
+            removed_iso = X_train_clean.shape[0] - np.sum(clean_mask)
+            logger.info(f"Isolation Forest anomaly removal: removed {removed_iso} additional anomalies -> {X_train_clean.shape[0]} rows")
+
+        # 3. Rebalancing with selected method
+        rebalance_method = Config.REBALANCE_METHOD.lower()
+        
+        if rebalance_method == 'adasyn':
+            logger.info("Applying ADASYN oversampling")
+            resampler = ADASYN(random_state=Config.RANDOM_SEED)
+        elif rebalance_method == 'borderline_smote':
+            logger.info("Applying Borderline-SMOTE oversampling")
+            resampler = BorderlineSMOTE(random_state=Config.RANDOM_SEED)
+        else:  # Default to SMOTE
+            logger.info("Applying SMOTE oversampling")
+            resampler = SMOTE(random_state=Config.RANDOM_SEED)
+
+        try:
+            X_train_res, y_train_res = resampler.fit_resample(X_train_clean, y_train_clean)
+        except Exception as e:
+            logger.warning(f"Resampling failed with {rebalance_method}: {e}. Falling back to SMOTE.")
+            smote = SMOTE(random_state=Config.RANDOM_SEED)
+            X_train_res, y_train_res = smote.fit_resample(X_train_clean, y_train_clean)
         
         unique, counts = np.unique(y_train_res, return_counts=True)
-        logger.info(f"After SMOTE: train shape={X_train_res.shape}, classes distribution: {dict(zip(unique, counts))}")
+        logger.info(f"After rebalancing: train shape={X_train_res.shape}, classes={dict(zip(unique, counts))}")
         
         return X_train_res, y_train_res
 
-    def build_model(self, params: Optional[Dict] = None) -> XGBClassifier:
+    def build_model(self, params: Optional[Dict] = None, feature_names: Optional[list] = None) -> XGBClassifier:
         """
         Build an XGBoost classifier with base or custom parameters.
 
         Args:
             params: Optional parameter overrides.
+            feature_names: Feature names for monotone constraints mapping
 
         Returns:
             Configured XGBClassifier (unfitted).
@@ -165,6 +204,15 @@ class ModelTrainer:
         model_params = {**Config.XGB_BASE_PARAMS}
         if params:
             model_params.update(params)
+
+        # Add monotone constraints if available and feature names provided
+        if feature_names and hasattr(Config, 'MONOTONE_CONSTRAINTS') and Config.MONOTONE_CONSTRAINTS:
+            constraints = []
+            for fname in feature_names:
+                constraints.append(Config.MONOTONE_CONSTRAINTS.get(fname, 0))
+            if any(c != 0 for c in constraints):
+                model_params['monotone_constraints'] = tuple(constraints)
+                logger.info(f"Applied monotone constraints to {sum(1 for c in constraints if c != 0)} features")
 
         model = XGBClassifier(**model_params)
         logger.info(f"Built XGBClassifier with params: {model_params}")
@@ -232,6 +280,7 @@ class ModelTrainer:
         X_train: np.ndarray,
         y_train: np.ndarray,
         params: Dict,
+        feature_names: Optional[list] = None,
     ) -> XGBClassifier:
         """
         Train XGBoost model with the given hyperparameters.
@@ -240,14 +289,30 @@ class ModelTrainer:
             X_train: Training features.
             y_train: Training labels.
             params: Tuned hyperparameters.
+            feature_names: Optional feature names for monotone constraints.
 
         Returns:
             Fitted XGBClassifier.
         """
+        from sklearn.model_selection import train_test_split
+
         logger.info("Training final model with best parameters...")
-        model = self.build_model(params)
-        model.fit(X_train, y_train)
-        logger.info("Model training complete.")
+        # Add early stopping for final training only
+        merged = {**(params or {})}
+        merged['early_stopping_rounds'] = Config.EARLY_STOPPING_ROUNDS
+        model = self.build_model(merged, feature_names=feature_names)
+
+        # Early stopping: hold out 10% for validation
+        X_tr, X_val, y_tr, y_val = train_test_split(
+            X_train, y_train, test_size=0.1, stratify=y_train,
+            random_state=Config.RANDOM_SEED,
+        )
+        model.fit(
+            X_tr, y_tr,
+            eval_set=[(X_val, y_val)],
+            verbose=False,
+        )
+        logger.info("Model training complete (with early stopping).")
         return model
 
     def evaluate(
@@ -293,6 +358,58 @@ class ModelTrainer:
         logger.info(f"\nClassification Report:\n{report}")
 
         return metrics
+
+    def compute_cv_score_distribution(
+        self,
+        model: XGBClassifier,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+    ) -> Dict:
+        """
+        Compute cross-validation score distribution for robustness analysis.
+        
+        Uses 10-fold stratified CV to assess model generalization.
+        
+        Args:
+            model: Fitted XGBClassifier.
+            X_train: Training features.
+            y_train: Training labels.
+            
+        Returns:
+            Dictionary with CV score statistics.
+        """
+        cv = StratifiedKFold(
+            n_splits=Config.TUNING_CV_FOLDS,
+            shuffle=True,
+            random_state=Config.RANDOM_SEED,
+        )
+        
+        # Compute CV scores using multiple metrics
+        metrics_dict = {
+            'accuracy': 'accuracy',
+            'f1_weighted': 'f1_weighted',
+            'precision_weighted': 'precision_weighted',
+            'recall_weighted': 'recall_weighted',
+        }
+        
+        cv_results = {}
+        logger.info("Computing cross-validation score distribution...")
+        
+        for metric_name, scoring in metrics_dict.items():
+            scores = cross_val_score(model, X_train, y_train, cv=cv, scoring=scoring, n_jobs=-1)
+            cv_results[metric_name] = {
+                'mean': scores.mean(),
+                'std': scores.std(),
+                'min': scores.min(),
+                'max': scores.max(),
+                'scores': scores.tolist(),
+            }
+            logger.info(
+                f"  {metric_name}: {scores.mean():.4f} ± {scores.std():.4f} "
+                f"(min={scores.min():.4f}, max={scores.max():.4f})"
+            )
+        
+        return cv_results
 
     def generate_confusion_matrix(
         self,
@@ -367,6 +484,7 @@ class ModelTrainer:
         feature_names: list,
         class_names: Optional[list] = None,
         data_hash: str = "",
+        cv_results: Optional[Dict] = None,
     ) -> None:
         """
         Persist model and training metadata.
@@ -378,6 +496,7 @@ class ModelTrainer:
             feature_names: Ordered feature names.
             class_names: Target class labels.
             data_hash: SHA256 hash of training data.
+            cv_results: Optional cross-validation score distribution.
         """
         Config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -405,6 +524,18 @@ class ModelTrainer:
             'training_data_hash': data_hash,
             'random_seed': Config.RANDOM_SEED,
         }
+        
+        # Add CV results if available
+        if cv_results:
+            metadata['cv_results'] = {
+                k: {
+                    'mean': round(float(v['mean']), 6),
+                    'std': round(float(v['std']), 6),
+                    'min': round(float(v['min']), 6),
+                    'max': round(float(v['max']), 6),
+                }
+                for k, v in cv_results.items()
+            }
 
         with open(Config.METADATA_PATH, 'w') as f:
             json.dump(metadata, f, indent=2, default=str)
@@ -458,10 +589,13 @@ class ModelTrainer:
         best_params = self.tune_hyperparameters(X_train, y_train)
 
         # 4. Train
-        model = self.train(X_train, y_train, best_params)
+        model = self.train(X_train, y_train, best_params, feature_names=feature_names)
 
         # 5. Evaluate
         metrics = self.evaluate(model, X_test, y_test, class_names)
+        
+        # 5.5 Compute CV score distribution
+        cv_results = self.compute_cv_score_distribution(model, X_train, y_train)
 
         # 6. Confusion matrix
         self.generate_confusion_matrix(model, X_test, y_test, class_names)
@@ -472,7 +606,7 @@ class ModelTrainer:
         # 8. Save model + metadata
         self.save_model(
             model, metrics, best_params, feature_names,
-            class_names=class_names, data_hash=data_hash,
+            class_names=class_names, data_hash=data_hash, cv_results=cv_results,
         )
 
         elapsed = time.time() - start_time

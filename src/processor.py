@@ -22,6 +22,9 @@ import numpy as np
 import pandas as pd
 import joblib
 from sklearn.preprocessing import LabelEncoder
+from sklearn.impute import KNNImputer
+from sklearn.ensemble import IsolationForest
+from difflib import SequenceMatcher
 
 from src.config import Config
 from src.utils import get_logger, set_seeds
@@ -90,7 +93,8 @@ class DataProcessor:
             3. Strip whitespace from string values
             4. Normalize string casing (title case for categoricals)
             5. Drop rows with >50% missing values
-            6. Drop duplicate rows
+            6. Drop duplicate rows (exact + fuzzy match on key columns)
+            7. Report data quality metrics
 
         Args:
             df: Raw DataFrame.
@@ -122,21 +126,102 @@ class DataProcessor:
         # Replace 'nan' strings with actual NaN
         df = df.replace({'nan': np.nan, 'NaN': np.nan, '': np.nan})
 
-        # Drop duplicates
+        # Drop exact duplicates
+        duplicates_exact = df.duplicated().sum()
         df = df.drop_duplicates()
 
+        # Fuzzy duplicate detection (skip for large datasets — exact dedup already ran)
+        if Config.TARGET_COLUMN in df.columns and len(df) <= 2000:
+            duplicate_indices = self._detect_fuzzy_duplicates(df)
+            if len(duplicate_indices) > 0:
+                df = df.drop(index=duplicate_indices).reset_index(drop=True)
+                logger.info(f"  Detected and removed {len(duplicate_indices)} fuzzy duplicates")
+        
         logger.info(
             f"Cleaning complete: {original_shape} -> {df.shape} "
-            f"(dropped {original_shape[0] - df.shape[0]} rows)"
+            f"(dropped {original_shape[0] - df.shape[0]} rows, exact duplicates: {duplicates_exact})"
         )
         return df.reset_index(drop=True)
 
+    def _detect_fuzzy_duplicates(self, df: pd.DataFrame, similarity_threshold: float = 0.95) -> list:
+        """
+        Detect fuzzy duplicates by comparing ALL feature columns.
+        
+        Uses blocking by target column to limit comparisons to within the same
+        career class. Compares both string columns (SequenceMatcher) and numeric
+        columns (normalised absolute difference).
+        
+        Args:
+            df: DataFrame to check
+            similarity_threshold: Threshold for considering rows as duplicates (0-1)
+            
+        Returns:
+            List of indices to drop
+        """
+        indices_to_drop = []
+        
+        target_col = Config.TARGET_COLUMN
+        compare_cols = [c for c in df.columns if c != target_col]
+        if not compare_cols:
+            return indices_to_drop
+        
+        str_cols = [c for c in compare_cols if pd.api.types.is_string_dtype(df[c])]
+        num_cols = [c for c in compare_cols if pd.api.types.is_numeric_dtype(df[c])]
+        
+        # Pre-compute numeric ranges for normalisation
+        num_ranges = {}
+        for col in num_cols:
+            col_range = df[col].max() - df[col].min()
+            num_ranges[col] = col_range if col_range > 0 else 1.0
+        
+        # Block by target column
+        if target_col in df.columns:
+            groups = df.groupby(target_col).groups
+        else:
+            groups = {'all': df.index.tolist()}
+        
+        for group_label, group_indices in groups.items():
+            group_indices = list(group_indices)
+            n = len(group_indices)
+            if n < 2:
+                continue
+            
+            max_comparisons = 100_000
+            pairs_done = 0
+            
+            for i_pos in range(n):
+                if pairs_done >= max_comparisons:
+                    break
+                idx_i = group_indices[i_pos]
+                for j_pos in range(i_pos + 1, n):
+                    if pairs_done >= max_comparisons:
+                        break
+                    pairs_done += 1
+                    idx_j = group_indices[j_pos]
+                    
+                    similarities = []
+                    # String column similarity
+                    for col in str_cols:
+                        val_i = str(df.at[idx_i, col]).lower()
+                        val_j = str(df.at[idx_j, col]).lower()
+                        similarities.append(SequenceMatcher(None, val_i, val_j).ratio())
+                    # Numeric column similarity (1 - normalised absolute diff)
+                    for col in num_cols:
+                        diff = abs(df.at[idx_i, col] - df.at[idx_j, col]) / num_ranges[col]
+                        similarities.append(1.0 - min(diff, 1.0))
+                    
+                    avg_similarity = np.mean(similarities) if similarities else 0
+                    if avg_similarity >= similarity_threshold:
+                        indices_to_drop.append(idx_j)
+        
+        return list(set(indices_to_drop))
+
     def _impute_missing(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Impute missing values.
+        Impute missing values using multiple strategies.
 
         Strategy:
-            - Numerical features: median imputation
+            - Numerical features: KNN imputation (k=5) if enabled, else median
             - Categorical features: mode imputation
 
         Args:
@@ -145,23 +230,37 @@ class DataProcessor:
         Returns:
             DataFrame with no missing values.
         """
-        for col in df.columns:
+        missing_before = df.isnull().sum().sum()
+        
+        # Separate numerical and categorical columns
+        numerical_cols = df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+        categorical_cols = df.select_dtypes(include='object').columns.tolist()
+        
+        # Numerical imputation
+        if numerical_cols and missing_before > 0:
+            if Config.ENABLE_KNN_IMPUTATION and len(df) > 5:
+                logger.info("  Using KNN imputation (k=5) for numerical features")
+                knn_imputer = KNNImputer(n_neighbors=5)
+                df[numerical_cols] = knn_imputer.fit_transform(df[numerical_cols])
+            else:
+                logger.info("  Using median imputation for numerical features")
+                for col in numerical_cols:
+                    if df[col].isnull().sum() > 0:
+                        fill_val = df[col].median()
+                        df[col] = df[col].fillna(fill_val)
+                        logger.info(f"    Imputed {df[col].isnull().sum()} missing values in '{col}' using median")
+        
+        # Categorical imputation
+        for col in categorical_cols:
             if df[col].isnull().sum() == 0:
                 continue
-
             missing_count = df[col].isnull().sum()
-            if df[col].dtype in ['int64', 'float64']:
-                fill_val = df[col].median()
-                strategy = 'median'
-            else:
-                fill_val = df[col].mode()[0] if not df[col].mode().empty else 'Unknown'
-                strategy = 'mode'
-
+            fill_val = df[col].mode()[0] if not df[col].mode().empty else 'Unknown'
             df[col] = df[col].fillna(fill_val)
-            logger.info(
-                f"  Imputed {missing_count} missing values in '{col}' "
-                f"using {strategy} (value={fill_val})"
-            )
+            logger.info(f"  Imputed {missing_count} missing values in '{col}' using mode (value={fill_val})")
+        
+        missing_after = df.isnull().sum().sum()
+        logger.info(f"Missing values: {missing_before} -> {missing_after}")
         return df
 
     def encode_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -264,7 +363,8 @@ class DataProcessor:
                 f"Available columns: {list(df.columns)}"
             )
 
-        feature_cols = [c for c in df.columns if c != target_col]
+        drop = set(getattr(Config, 'DROP_FEATURES', []))
+        feature_cols = [c for c in df.columns if c != target_col and c not in drop]
         X = df[feature_cols].values.astype(np.float32)
         y = df[target_col].values.astype(np.int64)
 
@@ -281,6 +381,46 @@ class DataProcessor:
         if self.target_encoder is not None:
             joblib.dump(self.target_encoder, Config.TARGET_ENCODER_PATH)
             logger.info(f"Target encoder saved: {Config.TARGET_ENCODER_PATH}")
+
+    def _generate_data_quality_report(self, df: pd.DataFrame) -> Dict:
+        """
+        Generate data quality metrics report.
+        
+        Args:
+            df: Processed DataFrame
+            
+        Returns:
+            Dictionary with quality metrics
+        """
+        report = {
+            'total_rows': len(df),
+            'total_columns': len(df.columns),
+            'missing_values_count': df.isnull().sum().sum(),
+            'missing_values_pct': (df.isnull().sum().sum() / (len(df) * len(df.columns))) * 100,
+            'duplicate_rows': df.duplicated().sum(),
+            'class_distribution': {},
+        }
+        
+        # Class distribution for target
+        if Config.TARGET_COLUMN in df.columns:
+            report['class_distribution'] = df[Config.TARGET_COLUMN].value_counts().to_dict()
+        
+        if Config.ENABLE_DATA_QUALITY_REPORT:
+            logger.info("=" * 60)
+            logger.info("DATA QUALITY REPORT")
+            logger.info("=" * 60)
+            logger.info(f"Total Rows: {report['total_rows']}")
+            logger.info(f"Total Columns: {report['total_columns']}")
+            logger.info(f"Missing Values: {report['missing_values_count']} ({report['missing_values_pct']:.2f}%)")
+            logger.info(f"Duplicate Rows: {report['duplicate_rows']}")
+            if report['class_distribution']:
+                logger.info("Class Distribution:")
+                for cls, count in sorted(report['class_distribution'].items(), key=lambda x: x[1], reverse=True):
+                    pct = (count / report['total_rows']) * 100
+                    logger.info(f"  {cls}: {count} ({pct:.1f}%)")
+            logger.info("=" * 60)
+        
+        return report
 
     def process_pipeline(
         self, data_path: Optional[Path] = None
@@ -312,6 +452,9 @@ class DataProcessor:
 
         # 2. Clean
         df = self.clean_data(df)
+        
+        # 2.5 Data Quality Report
+        quality_report = self._generate_data_quality_report(df)
 
         # 3. Impute
         df = self._impute_missing(df)

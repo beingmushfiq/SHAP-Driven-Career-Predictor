@@ -213,19 +213,13 @@
                 <h5 class="fw-bold text-primary mb-3">Key Influencers:</h5>
                 <ul class="interpretation-list">
                     {% for feat in shap_data.interpretations|slice:":5" %}
-                        <li class="{% if feat.impact < 0 %}negative{% endif %}">
-                            <svg width="20" height="20" fill="none" class="mt-1 flex-shrink-0" stroke="{% if feat.impact > 0 %}var(--accent-green){% else %}var(--accent-red){% endif %}" stroke-width="2" viewBox="0 0 24 24">
-                                {% if feat.impact > 0 %}
-                                    <path d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
-                                {% else %}
-                                    <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                                {% endif %}
+                        <li>
+                            <svg width="20" height="20" fill="none" class="mt-1 flex-shrink-0" stroke="var(--accent-green)" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
                             </svg>
                             <div>
                                 Your <span class="text-accent">{{ feat.feature }}</span> score 
-                                contributed <strong class="{% if feat.impact > 0 %}text-success{% else %}text-danger{% endif %}">
-                                {% if feat.impact > 0 %}+{% endif %}{{ feat.impact|floatformat:2 }}%
-                                </strong> towards this career match.
+                                contributed <strong class="text-success">{{ feat.impact|floatformat:2 }}%</strong> towards this career match.
                             </div>
                         </li>
                     {% empty %}

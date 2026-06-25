@@ -86,11 +86,12 @@ class PredictView(View):
 
             # 4. Background and Skill Validation
             from src.validator import CareerValidator
-            is_aligned, warnings, suggestions = CareerValidator.validate_prediction(representative_input, career)
+            is_aligned, warnings, suggestions, alignment_scores = CareerValidator.validate_prediction(representative_input, career)
             validation_data = {
                 'is_aligned': is_aligned,
                 'warnings': warnings,
-                'suggestions': suggestions
+                'suggestions': suggestions,
+                'alignment_scores': alignment_scores,
             }
             
             context = {
