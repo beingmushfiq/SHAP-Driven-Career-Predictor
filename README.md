@@ -145,7 +145,7 @@ python manage.py runserver
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Shihab-Shoron/SHAP-Driven-Career-Predictor.git
+git clone https://github.com/beingmushfiq/SHAP-Driven-Career-Predictor.git
 cd SHAP-Driven-Career-Predictor
 ```
 
