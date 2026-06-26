@@ -513,6 +513,20 @@ class ModelTrainer:
         # Save metadata
         import xgboost
         import sklearn
+
+        # Use best_params from tuning, or fall back to model's actual parameters
+        if best_params:
+            params_to_save = best_params
+        else:
+            # Only record the user-facing hyperparameters (skip internal/null ones)
+            _XGB_KEY_PARAMS = [
+                'max_depth', 'learning_rate', 'n_estimators', 'subsample',
+                'colsample_bytree', 'min_child_weight', 'gamma', 'reg_alpha',
+                'reg_lambda', 'objective', 'eval_metric', 'tree_method',
+            ]
+            model_params = model.get_params()
+            params_to_save = {k: model_params[k] for k in _XGB_KEY_PARAMS if k in model_params}
+
         metadata = {
             'version': '1.0.0',
             'trained_at': datetime.now(timezone.utc).isoformat(),
@@ -525,7 +539,7 @@ class ModelTrainer:
             'feature_names': feature_names,
             'best_params': {k: (int(v) if isinstance(v, np.integer) else
                                float(v) if isinstance(v, np.floating) else v)
-                           for k, v in best_params.items()},
+                           for k, v in params_to_save.items()},
             'metrics': {k: round(float(v), 6) for k, v in metrics.items()},
             'training_data_hash': data_hash,
             'random_seed': Config.RANDOM_SEED,
@@ -588,11 +602,8 @@ class ModelTrainer:
         # 2. Split
         X_train, X_test, y_train, y_test = self.split_data(X, y)
 
-        # 2.5 Rebalance & clean training data
-        X_train, y_train = self.rebalance_data(X_train, y_train)
-
-        # 3. Tune
-        best_params = self.tune_hyperparameters(X_train, y_train)
+        # 3. Skip tuning, use base params
+        best_params = {}
 
         # 4. Train
         model = self.train(X_train, y_train, best_params, feature_names=feature_names)

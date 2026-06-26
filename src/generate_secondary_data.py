@@ -111,22 +111,6 @@ CAREER_PROFILES = {
         realistic=8, investigative=7, artistic=2,
         social_i=3, enterprising=4, conventional=6, sigma=10
     ),
-    'Doctor & Surgeon': _profile(
-        logical=80, numerical=72, verbal=70, spatial=65,
-        mechanical=55, creative=50, social=72, scientific=88,
-        openness=65, conscientiousness=92, extraversion=55,
-        agreeableness=78, emotional_stability=75,
-        realistic=5, investigative=9, artistic=2,
-        social_i=8, enterprising=5, conventional=7, sigma=9
-    ),
-    'Healthcare Specialist': _profile(
-        logical=68, numerical=60, verbal=70, spatial=55,
-        mechanical=50, creative=52, social=82, scientific=72,
-        openness=62, conscientiousness=85, extraversion=58,
-        agreeableness=85, emotional_stability=72,
-        realistic=5, investigative=7, artistic=2,
-        social_i=9, enterprising=3, conventional=6, sigma=10
-    ),
     'Business Manager': _profile(
         logical=68, numerical=68, verbal=75, spatial=52,
         mechanical=40, creative=62, social=75, scientific=48,
@@ -167,22 +151,6 @@ CAREER_PROFILES = {
         realistic=3, investigative=3, artistic=8,
         social_i=5, enterprising=9, conventional=4, sigma=10
     ),
-    'Legal Professional': _profile(
-        logical=82, numerical=58, verbal=90, spatial=48,
-        mechanical=35, creative=55, social=65, scientific=55,
-        openness=62, conscientiousness=88, extraversion=62,
-        agreeableness=55, emotional_stability=72,
-        realistic=3, investigative=7, artistic=2,
-        social_i=5, enterprising=8, conventional=9, sigma=9
-    ),
-    'Legal Support': _profile(
-        logical=68, numerical=55, verbal=80, spatial=45,
-        mechanical=35, creative=48, social=62, scientific=45,
-        openness=58, conscientiousness=85, extraversion=55,
-        agreeableness=62, emotional_stability=68,
-        realistic=4, investigative=5, artistic=2,
-        social_i=5, enterprising=5, conventional=9, sigma=10
-    ),
     'Educator': _profile(
         logical=65, numerical=60, verbal=82, spatial=52,
         mechanical=40, creative=65, social=88, scientific=55,
@@ -206,14 +174,6 @@ CAREER_PROFILES = {
         agreeableness=92, emotional_stability=72,
         realistic=2, investigative=6, artistic=5,
         social_i=9, enterprising=3, conventional=4, sigma=10
-    ),
-    'Biologist': _profile(
-        logical=72, numerical=68, verbal=62, spatial=58,
-        mechanical=45, creative=58, social=50, scientific=90,
-        openness=80, conscientiousness=80, extraversion=45,
-        agreeableness=62, emotional_stability=68,
-        realistic=5, investigative=9, artistic=3,
-        social_i=4, enterprising=3, conventional=6, sigma=9
     ),
     'Chemist': _profile(
         logical=75, numerical=82, verbal=58, spatial=60,

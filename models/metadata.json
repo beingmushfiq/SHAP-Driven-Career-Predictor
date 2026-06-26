@@ -1,13 +1,27 @@
 {
   "version": "1.0.0",
-  "trained_at": "2026-06-25T20:42:55.114808+00:00",
+  "trained_at": "2026-06-26T22:04:38.650755+00:00",
   "python_version": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]",
-  "xgboost_version": "3.2.0",
-  "sklearn_version": "1.8.0",
+  "xgboost_version": "3.3.0",
+  "sklearn_version": "1.9.0",
   "n_features": 21,
-  "n_classes": 16,
-  "class_labels": [],
+  "n_classes": 12,
+  "class_labels": [
+    "Architect & Planner",
+    "Business Manager",
+    "Chemist",
+    "Educator",
+    "Engineer",
+    "Finance Professional",
+    "Marketing Professional",
+    "Musician & Audio",
+    "Physicist",
+    "Psychologist",
+    "Software Engineer",
+    "Visual Artist"
+  ],
   "feature_names": [
+    "field",
     "gpa",
     "extracurricular_activities",
     "internships",
@@ -27,29 +41,54 @@
     "communication_composite",
     "experience_score",
     "skills_intelligence_score",
-    "interest_compatibility_score",
     "career_suitability_index"
   ],
   "best_params": {
-    "n_estimators": 150,
-    "max_depth": 5,
-    "learning_rate": 0.1577382153652015,
-    "subsample": 0.7072208179944635,
-    "colsample_bytree": 0.6709057835214964,
-    "colsample_bylevel": 0.6858011811370042,
-    "colsample_bynode": 0.7856611204761054,
-    "min_child_weight": 5,
-    "gamma": 0.9307125505152821,
-    "reg_alpha": 0.13275564414467608,
-    "reg_lambda": 2.2424203738742667,
-    "max_delta_step": 3
+    "max_depth": 10,
+    "learning_rate": 0.1,
+    "n_estimators": 500,
+    "subsample": 1.0,
+    "colsample_bytree": 1.0,
+    "min_child_weight": 1,
+    "gamma": 0,
+    "reg_alpha": 0,
+    "reg_lambda": 0.5,
+    "objective": "multi:softprob",
+    "eval_metric": "mlogloss",
+    "tree_method": "hist"
   },
   "metrics": {
-    "accuracy": 0.983889,
-    "f1_weighted": 0.983716,
-    "precision_weighted": 0.985357,
-    "recall_weighted": 0.983889
+    "accuracy": 0.971667,
+    "f1_weighted": 0.971715,
+    "precision_weighted": 0.972049,
+    "recall_weighted": 0.971667
   },
-  "training_data_hash": "",
-  "random_seed": 42
+  "training_data_hash": "sha256:0c0dd8dbbc4ccea56a216526e397f2b5aefd205c317fed44164b2905cde23d41",
+  "random_seed": 42,
+  "cv_results": {
+    "accuracy": {
+      "mean": 0.970833,
+      "std": 0.005009,
+      "min": 0.96375,
+      "max": 0.974375
+    },
+    "f1_weighted": {
+      "mean": 0.97087,
+      "std": 0.005077,
+      "min": 0.963691,
+      "max": 0.974563
+    },
+    "precision_weighted": {
+      "mean": 0.971337,
+      "std": 0.005252,
+      "min": 0.963922,
+      "max": 0.975415
+    },
+    "recall_weighted": {
+      "mean": 0.970833,
+      "std": 0.005009,
+      "min": 0.96375,
+      "max": 0.974375
+    }
+  }
 }

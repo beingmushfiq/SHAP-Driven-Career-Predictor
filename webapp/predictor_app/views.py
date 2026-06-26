@@ -26,50 +26,26 @@ class PredictView(View):
             raw_input_data = form.cleaned_data
             predictor = CareerPredictor.get_instance()
             
-            # Logic for handling multi-selection: 
-            # We aggregate probabilities across all selected items for each multi-select field.
-            # To avoid exponential combinations, we use a 'representative' approach:
-            # We predict for each selection in each field while keeping others constant (first selected).
-            
-            all_probs = []
+            # Logic for handling multi-selection: Use the first selected option as representative.
             representative_input = {}
             for key, value in raw_input_data.items():
                 representative_input[key] = value[0] if isinstance(value, list) and len(value) > 0 else value
 
-            # Base prediction for representative input
-            _, base_probs = predictor.predict(representative_input)
-            all_probs.append(base_probs)
-
-            # Additional predictions for other selections
-            for key, value in raw_input_data.items():
-                if isinstance(value, list) and len(value) > 1:
-                    for extra_val in value[1:]:
-                        temp_input = representative_input.copy()
-                        temp_input[key] = extra_val
-                        _, p = predictor.predict(temp_input)
-                        all_probs.append(p)
-            
-            # Average probabilities
-            import numpy as np
-            avg_probs = np.mean(all_probs, axis=0)
-            
-            # Get final career and confidence
-            class_names = predictor.get_class_names()
-            career_idx = avg_probs.argmax()
-            career = class_names[career_idx]
-            confidence = avg_probs[career_idx] * 100
-            
-            # Get Top Predictions with SHAP factors
+            # Get Top Predictions with alignment-based re-ranking (our single source of truth!)
             top_predictions = predictor.get_top_predictions(representative_input, n=3)
-            # Align probabilities with averaged probabilities if multi-select was used
-            for pred in top_predictions:
-                try:
-                    c_idx = class_names.index(pred['career'])
-                    pred['probability'] = round(avg_probs[c_idx] * 100, 2)
-                except ValueError:
-                    pass
             
-            # 3. Generate SHAP Explanation (for representative input)
+            # Check if any valid recommendations were found
+            no_recommendations = len(top_predictions) == 0
+            
+            # Use top_predictions as the source of truth for career and confidence!
+            if no_recommendations:
+                career = None
+                confidence = "N/A"
+            else:
+                career = top_predictions[0]['career']
+                confidence = f"{top_predictions[0]['probability']:.2f}%"
+            
+            # Generate SHAP Explanation (for representative input)
             X_encoded = predictor.preprocess_input(representative_input)
             prediction_id = str(uuid.uuid4())[:8]
             explainer = SHAPExplainer.get_instance()
@@ -83,24 +59,14 @@ class PredictView(View):
                 'plot_url': shap_plot_url,
                 'interpretations': interpretations
             }
-
-            # 4. Background and Skill Validation
-            from src.validator import CareerValidator
-            is_aligned, warnings, suggestions, alignment_scores = CareerValidator.validate_prediction(representative_input, career)
-            validation_data = {
-                'is_aligned': is_aligned,
-                'warnings': warnings,
-                'suggestions': suggestions,
-                'alignment_scores': alignment_scores,
-            }
             
             context = {
                 'career': career,
-                'confidence': f"{confidence:.2f}%",
+                'confidence': confidence,
                 'predictions': top_predictions,
                 'shap_data': shap_data,
-                'validation_data': validation_data,
-                'input_data': representative_input
+                'input_data': representative_input,
+                'no_recommendations': no_recommendations,
             }
             return render(request, 'predictor_app/result.html', context)
         

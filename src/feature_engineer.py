@@ -51,6 +51,10 @@ def create_skills_intelligence_score(df: pd.DataFrame) -> np.ndarray:
         (field_str == 'finance') & (analytical > 3),
         1.3, booster
     )
+    booster = np.where(
+        (field_str == 'business') & (analytical > 3),
+        1.15, booster
+    )
     
     skills_score = base_score * booster
     # Normalize to 0-5 scale
@@ -75,14 +79,11 @@ def create_education_alignment_score(df: pd.DataFrame) -> np.ndarray:
     field_importance = {
         'computer science': 0.95,
         'engineering': 0.9,
-        'medicine': 0.95,
         'finance': 0.9,
         'physics': 0.85,
         'chemistry': 0.85,
-        'biology': 0.8,
         'business': 0.8,
         'psychology': 0.75,
-        'law': 0.85,
         'architecture': 0.8,
         'education': 0.7,
         'marketing': 0.7,
@@ -117,17 +118,14 @@ def create_interest_compatibility_score(df: pd.DataFrame) -> np.ndarray:
     field_interest_specificity = {
         'computer science': 0.9,
         'engineering': 0.85,
-        'medicine': 0.95,
         'finance': 0.85,
         'psychology': 0.8,
-        'law': 0.8,
         'art': 0.75,
         'music': 0.7,
         'business': 0.7,
         'education': 0.7,
         'physics': 0.9,
         'chemistry': 0.85,
-        'biology': 0.8,
         'architecture': 0.85,
         'marketing': 0.7,
     }
@@ -202,11 +200,10 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     # 4. Domain-specific field×skill interaction features
     is_cs = df.get('field', '').astype(str).str.lower().str.strip() == 'computer science'
     is_finance = df.get('field', '').astype(str).str.lower().str.strip() == 'finance'
-    is_medicine = df.get('field', '').astype(str).str.lower().str.strip() == 'medicine'
     
     df['cs_coding_interaction'] = np.where(is_cs, pd.to_numeric(df.get('coding_skills', 0), errors='coerce').fillna(0.0), 0.0)
     df['finance_analytical_interaction'] = np.where(is_finance, pd.to_numeric(df.get('analytical_skills', 0), errors='coerce').fillna(0.0), 0.0)
-    df['medicine_gpa_interaction'] = np.where(is_medicine, pd.to_numeric(df.get('gpa', 0.0), errors='coerce').fillna(0.0), 0.0)
+    df['medicine_gpa_interaction'] = 0.0  # Medicine domain removed; kept for schema compatibility
     
     # 5. Skills Intelligence Score (NEW)
     df['skills_intelligence_score'] = create_skills_intelligence_score(df)

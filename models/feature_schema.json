@@ -2,6 +2,7 @@
   "version": "1.0.0",
   "feature_count": 21,
   "feature_names": [
+    "field",
     "gpa",
     "extracurricular_activities",
     "internships",
@@ -21,10 +22,10 @@
     "communication_composite",
     "experience_score",
     "skills_intelligence_score",
-    "interest_compatibility_score",
     "career_suitability_index"
   ],
   "feature_types": {
+    "field": "categorical",
     "gpa": "numerical",
     "extracurricular_activities": "numerical",
     "internships": "numerical",
@@ -44,7 +45,6 @@
     "communication_composite": "numerical",
     "experience_score": "numerical",
     "skills_intelligence_score": "numerical",
-    "interest_compatibility_score": "numerical",
     "career_suitability_index": "numerical"
   }
 }

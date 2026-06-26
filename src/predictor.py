@@ -69,6 +69,20 @@ class CareerPredictor:
         with open(Config.FEATURE_SCHEMA_PATH, 'r') as f:
             self._feature_schema = json.load(f)
 
+        # Validate alignment mapping against model classes
+        model_classes = set(self._target_encoder.classes_)
+        for field, careers in Config.FIELD_CAREER_ALIGNMENT.items():
+            valid_careers = [c for c in careers if c in model_classes]
+            invalid_careers = [c for c in careers if c not in model_classes]
+            if invalid_careers:
+                logger.warning(
+                    f"Field {field} references invalid careers (not in model): {invalid_careers}"
+                )
+            if not valid_careers:
+                logger.warning(
+                    f"Field {field} has NO valid careers! Predictions will be problematic."
+                )
+
         self._loaded = True
         logger.info(
             f"Artifacts loaded. Features: {self._feature_schema['feature_count']}, "
@@ -87,16 +101,33 @@ class CareerPredictor:
         return encoded.reshape(1, -1)
 
     def predict(self, form_data: Dict) -> Tuple[str, np.ndarray]:
-        """Predict career from form data. Returns (label, probabilities)."""
+        """Predict career from form data. Returns (label, probabilities).
+        Filters out unsupported career domains and field-mismatched careers."""
         X = self.preprocess_input(form_data)
         proba = self._model.predict_proba(X)[0]
         
         # Apply sharpening to boost top choice confidence for UX calibration
-        # This makes the top prediction more dominant as requested
         sharpening = getattr(Config, 'PREDICTION_SHARPENING', 1.0)
         if sharpening != 1.0:
             proba = np.power(proba, sharpening)
             proba = proba / (np.sum(proba) + 1e-15)
+        
+        # Determine allowed careers for the user's field
+        user_field = str(form_data.get('field', '')).strip()
+        aligned_careers = set(Config.FIELD_CAREER_ALIGNMENT.get(user_field, []))
+        
+        # Zero out unsupported and field-mismatched career clusters
+        for idx in range(len(proba)):
+            label = self._target_encoder.inverse_transform([idx])[0]
+            if label in Config.UNSUPPORTED_CAREER_CLUSTERS:
+                proba[idx] = 0.0
+            elif aligned_careers and label not in aligned_careers:
+                proba[idx] = 0.0
+        
+        # Re-normalize after zeroing
+        total = np.sum(proba)
+        if total > 0:
+            proba = proba / total
             
         predicted_class = np.argmax(proba)
         career_label = self._target_encoder.inverse_transform([predicted_class])[0]
@@ -105,27 +136,72 @@ class CareerPredictor:
 
     def get_top_predictions(self, form_data: Dict, n: int = 3) -> List[Dict]:
         """
-        Get top-N career predictions with confidence scores, SHAP explanations,
-        and validation alignment scores.
+        Get top-N career predictions with filtering, alignment scoring, and re-ranking.
+        
+        Strategy:
+            1. Generate top 5+ predictions from the model
+            2. Filter out unsupported career domains
+            3. Compute Career Alignment Score for each
+            4. Remove predictions below minimum alignment threshold
+            5. Re-rank by combined score (model confidence + alignment)
+            6. Return top N valid recommendations
         
         Args:
             form_data: User input data dictionary
             n: Number of top predictions to return (default: 3)
             
         Returns:
-            List of prediction dictionaries with confidence, factors, and alignment scores
+            List of prediction dictionaries with confidence, alignment, and SHAP data
         """
         _, proba = self.predict(form_data)
-        top_indices = np.argsort(proba)[::-1][:n]
+        
+        # Step 1: Get more candidates than needed (top 5+ from model)
+        candidate_count = max(n * 3, 12)
+        top_indices = np.argsort(proba)[::-1][:candidate_count]
         
         from src.explain import SHAPExplainer
         X = self.preprocess_input(form_data)
         explainer = SHAPExplainer.get_instance()
         
-        results = []
+        # Determine allowed careers for the user's field (hard filter)
+        user_field = str(form_data.get('field', '')).strip()
+        aligned_careers = set(Config.FIELD_CAREER_ALIGNMENT.get(user_field, []))
+        has_field_filter = bool(aligned_careers)
+        if has_field_filter:
+            logger.info(f"Field alignment filter active for '{user_field}': {aligned_careers}")
+        
+        # Step 2-4: Filter and score each candidate
+        scored_candidates = []
         for idx in top_indices:
             label = self._target_encoder.inverse_transform([idx])[0]
             confidence = float(proba[idx])
+            
+            # Skip unsupported career clusters
+            if label in Config.UNSUPPORTED_CAREER_CLUSTERS:
+                logger.info(f"Filtered unsupported career: {label}")
+                continue
+            
+            # Hard filter: skip careers not aligned with user's field
+            if has_field_filter and label not in aligned_careers:
+                logger.info(f"Filtered field-mismatched career: {label} (field: {user_field})")
+                continue
+            
+            # Skip zero-confidence predictions
+            if confidence <= 0:
+                continue
+            
+            # Compute Career Alignment Score
+            alignment_score = CareerValidator.compute_career_alignment_score(form_data, label)
+            
+            # Skip careers below minimum alignment threshold
+            if alignment_score < Config.MIN_ALIGNMENT_SCORE:
+                logger.info(
+                    f"Filtered low-alignment career: {label} "
+                    f"(score: {alignment_score:.1f} < {Config.MIN_ALIGNMENT_SCORE})"
+                )
+                continue
+            
+            # Get SHAP interpretations for this class
             interpretations = explainer.get_local_interpretations(X, class_idx=idx)
             
             # Format top 3 positive factors
@@ -137,21 +213,37 @@ class CareerPredictor:
                 for item in positive_factors
             ]
             
-            # Get validation scores for this prediction
-            validation_report = CareerValidator.generate_validation_report(
-                form_data, label
+            # Get full validation report
+            validation_report = CareerValidator.generate_validation_report(form_data, label)
+            
+            # Step 5: Compute combined ranking score
+            # Combined = w1 × model_confidence + w2 × alignment_score
+            combined_score = (
+                Config.RANK_WEIGHT_CONFIDENCE * (confidence * 100) +
+                Config.RANK_WEIGHT_ALIGNMENT * alignment_score
             )
             
-            results.append({
+            scored_candidates.append({
                 'career': label,
                 'probability': round(confidence * 100, 2),
+                'alignment_score': round(alignment_score, 1),
+                'combined_score': round(combined_score, 2),
                 'factors': factors_summary,
                 'interpretations': interpretations,
                 'alignment_scores': validation_report.get('alignment_scores', {}),
                 'warnings': validation_report.get('warnings', []),
                 'suggestions': validation_report.get('suggestions', []),
+                'skill_gaps': validation_report.get('skill_gaps', []),
                 'is_aligned': validation_report.get('is_aligned', True),
             })
+        
+        # Step 6: Re-rank by combined score and return top N
+        scored_candidates.sort(key=lambda x: x['combined_score'], reverse=True)
+        results = scored_candidates[:n]
+        
+        if not results:
+            logger.warning("No valid recommendations found after filtering")
+        
         return results
 
     def get_class_names(self) -> List[str]:

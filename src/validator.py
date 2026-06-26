@@ -94,24 +94,35 @@ class CareerValidator:
         return alignment_score, gaps
 
     @classmethod
-    def compute_interest_alignment_score(cls, predicted_career: str) -> float:
+    def compute_interest_alignment_score(cls, predicted_career: str, form_data: Dict = None) -> float:
         """
         Compute interest-career alignment score (0-100).
         
-        Note: In production, would compare user_interests with career typical interests.
-        Currently uses field-based heuristic.
+        Uses field-based heuristic and career interest mapping from Config.
         
         Args:
             predicted_career: Predicted career cluster
+            form_data: Optional user input data for field-based scoring
             
         Returns:
             Alignment score (0-100)
         """
-        # If career is in CAREER_INTERESTS, return high score
-        if predicted_career in Config.CAREER_INTERESTS:
-            return 80.0  # Known career with interest profile
+        base_score = 70.0  # Default for unmapped careers
         
-        return 70.0  # Unmapped career; neutral score
+        # If career is in CAREER_INTERESTS, boost score
+        if predicted_career in Config.CAREER_INTERESTS:
+            base_score = 80.0
+            
+            # If we have form data, boost further based on field alignment
+            if form_data:
+                field = str(form_data.get('field', '')).strip()
+                aligned = Config.FIELD_CAREER_ALIGNMENT.get(field, [])
+                if predicted_career in aligned:
+                    base_score = 95.0
+                elif any(c in predicted_career for c in aligned):
+                    base_score = 85.0
+        
+        return base_score
 
     @classmethod
     def validate_prediction(
@@ -138,6 +149,19 @@ class CareerValidator:
         suggestions = []
         is_aligned = True
         
+        # Check if predicted career is in an unsupported domain
+        if predicted_career in Config.UNSUPPORTED_CAREER_CLUSTERS:
+            return False, [
+                f"'{predicted_career}' is not a supported career domain."
+            ], [
+                "Please update your profile or try a different assessment."
+            ], {
+                'education_alignment': 0.0,
+                'skill_alignment': 0.0,
+                'interest_alignment': 0.0,
+                'composite_alignment': 0.0,
+            }
+        
         # Extract features
         field = str(form_data.get('field', '')).strip()
         gpa = float(form_data.get('gpa', 0.0))
@@ -145,13 +169,14 @@ class CareerValidator:
         # Compute alignment scores
         education_score = cls.compute_education_alignment_score(field, predicted_career)
         skill_score, skill_gaps = cls.compute_skill_alignment_score(form_data, predicted_career)
-        interest_score = cls.compute_interest_alignment_score(predicted_career)
+        interest_score = cls.compute_interest_alignment_score(predicted_career, form_data)
         
         # Composite alignment score (weighted average)
+        # 0.40 × Education + 0.35 × Skill + 0.25 × Interest
         composite_score = (
-            0.35 * education_score +
-            0.40 * skill_score +
-            0.25 * interest_score
+            Config.ALIGNMENT_WEIGHT_EDUCATION * education_score +
+            Config.ALIGNMENT_WEIGHT_SKILL * skill_score +
+            Config.ALIGNMENT_WEIGHT_INTEREST * interest_score
         )
         
         scores = {
@@ -190,7 +215,7 @@ class CareerValidator:
                 )
         
         # 3. GPA Check for selective careers
-        selective_careers = ['Doctor & Surgeon', 'Legal Professional']
+        selective_careers = []
         if predicted_career in selective_careers and gpa < 3.0:
             is_aligned = False
             warnings.append(
@@ -203,6 +228,34 @@ class CareerValidator:
             )
         
         return is_aligned, warnings, suggestions, scores
+
+    @classmethod
+    def compute_career_alignment_score(cls, form_data: Dict, predicted_career: str) -> float:
+        """
+        Compute the weighted Career Alignment Score for a prediction.
+        
+        Career Alignment Score = 
+            0.40 × Education Compatibility +
+            0.35 × Skill Compatibility +
+            0.25 × Interest Compatibility
+        
+        Args:
+            form_data: User input data
+            predicted_career: Predicted career cluster
+            
+        Returns:
+            Career Alignment Score (0-100)
+        """
+        field = str(form_data.get('field', '')).strip()
+        education_score = cls.compute_education_alignment_score(field, predicted_career)
+        skill_score, _ = cls.compute_skill_alignment_score(form_data, predicted_career)
+        interest_score = cls.compute_interest_alignment_score(predicted_career, form_data)
+        
+        return (
+            Config.ALIGNMENT_WEIGHT_EDUCATION * education_score +
+            Config.ALIGNMENT_WEIGHT_SKILL * skill_score +
+            Config.ALIGNMENT_WEIGHT_INTEREST * interest_score
+        )
 
     @classmethod
     def generate_validation_report(cls, form_data: Dict, predicted_career: str) -> Dict:

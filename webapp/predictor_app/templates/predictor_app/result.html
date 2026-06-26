@@ -149,6 +149,32 @@
         </div>
     </div>
 
+    <!-- No Recommendations Message -->
+    {% if no_recommendations %}
+    <div class="glass-card mb-5 delay-2" style="animation: fadeSlideUp 0.8s ease-out; border-left: 5px solid var(--accent-red); background: rgba(254, 242, 242, 0.6);">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <svg width="24" height="24" fill="none" stroke="var(--accent-red)" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <h3 class="fw-bold mb-0 text-danger" style="font-size: 1.3rem;">No Highly Compatible Recommendation Available</h3>
+        </div>
+        <p class="text-secondary mb-3">
+            Based on your profile, our system could not find a career recommendation that meets the minimum compatibility threshold. 
+            This may indicate a mismatch between your current profile and the supported career domains.
+        </p>
+        <h5 class="fw-bold text-primary mb-2" style="font-size: 1rem;">Suggested Actions:</h5>
+        <ul class="text-secondary">
+            <li>Review and update your profile with more accurate skill ratings</li>
+            <li>Consider fields of study that align with your strongest skills</li>
+            <li>Gain more experience through internships, projects, or certifications</li>
+            <li>Explore career paths that match your academic background</li>
+        </ul>
+        <a href="{% url 'predict' %}" class="btn btn-outline-glass px-4 py-2 mt-3">
+            Update Profile
+        </a>
+    </div>
+    {% else %}
+
     <!-- Top Predictions -->
     <div class="row g-4 mb-5 delay-2" style="animation: fadeSlideUp 0.8s ease-out;">
         {% for pred in predictions|slice:":3" %}
@@ -159,11 +185,60 @@
                     <div class="probability-badge">{{ pred.probability }}%</div>
                 </div>
                 <h4 class="fw-bold mb-0 text-primary">{{ pred.career }}</h4>
+                
+                <!-- Career Alignment Score -->
+                <div class="mt-3 mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted fw-bold">Career Alignment Score</small>
+                        <span class="badge {% if pred.alignment_score >= 80 %}bg-success{% elif pred.alignment_score >= 60 %}bg-warning{% else %}bg-secondary{% endif %} rounded-pill">
+                            {{ pred.alignment_score }}/100
+                        </span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar {% if pred.alignment_score >= 80 %}bg-success{% elif pred.alignment_score >= 60 %}bg-warning{% else %}bg-secondary{% endif %}" 
+                             role="progressbar" id="pb-{{ forloop.counter }}"></div>
+                    </div>
+                    <script>
+                        document.getElementById('pb-{{ forloop.counter }}').style.width = '{{ pred.alignment_score }}%';
+                    </script>
+                </div>
+
+                <!-- Alignment Score Breakdown -->
+                {% if pred.alignment_scores %}
+                <div class="mt-2 mb-2" style="font-size: 0.78rem;">
+                    <div class="d-flex justify-content-between text-muted">
+                        <span>Education</span>
+                        <span>{{ pred.alignment_scores.education_alignment|floatformat:0 }}%</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <span>Skills</span>
+                        <span>{{ pred.alignment_scores.skill_alignment|floatformat:0 }}%</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted">
+                        <span>Interests</span>
+                        <span>{{ pred.alignment_scores.interest_alignment|floatformat:0 }}%</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Key Strengths / Supporting Skills -->
                 {% if pred.factors %}
                     <div class="mt-3">
-                        <small class="text-muted d-block mb-1">Key Factors:</small>
+                        <small class="text-muted d-block mb-1">Key Strengths:</small>
                         {% for factor in pred.factors %}
                             <span class="badge bg-light text-secondary border me-1 mb-1">{{ factor }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- Skill Gaps (if any) -->
+                {% if pred.skill_gaps %}
+                    <div class="mt-2">
+                        <small class="text-muted d-block mb-1">Areas to Develop:</small>
+                        {% for gap in pred.skill_gaps %}
+                            <span class="badge bg-light text-danger border me-1 mb-1">
+                                {{ gap.skill|cut:"_"|title }} ({{ gap.current|floatformat:1 }}/{{ gap.required|floatformat:1 }})
+                            </span>
                         {% endfor %}
                     </div>
                 {% endif %}
@@ -172,31 +247,7 @@
         {% endfor %}
     </div>
 
-    <!-- Validation Alerts / Mismatch Warning -->
-    {% if validation_data and not validation_data.is_aligned %}
-    <div class="glass-card mb-5 delay-2-5" style="animation: fadeSlideUp 0.9s ease-out; border-left: 5px solid var(--accent-red); background: rgba(254, 242, 242, 0.6);">
-        <div class="d-flex align-items-center gap-2 mb-3">
-            <svg width="24" height="24" fill="none" stroke="var(--accent-red)" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
-            <h3 class="fw-bold mb-0 text-danger" style="font-size: 1.3rem;">Profile Mismatch Notification</h3>
-        </div>
-        <p class="text-secondary">
-            Our validator flagged some discrepancies between your background/skills and the predicted career <strong>{{ career }}</strong>:
-        </p>
-        <ul class="mb-3 text-secondary">
-            {% for warning in validation_data.warnings %}
-                <li>{{ warning }}</li>
-            {% endfor %}
-        </ul>
-        <h5 class="fw-bold text-primary mb-2" style="font-size: 1rem;">Actionable Suggestions:</h5>
-        <ul class="text-secondary">
-            {% for suggestion in validation_data.suggestions %}
-                <li>{{ suggestion }}</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+
 
     <!-- SHAP Explainability Section -->
     <div class="glass-card mb-5 delay-3" style="animation: fadeSlideUp 1s ease-out;">
@@ -259,6 +310,7 @@
             Compare Models →
         </a>
     </div>
+    {% endif %}
 
     <!-- Action Buttons -->
     <div class="text-center delay-4" style="animation: fadeSlideUp 1.2s ease-out;">

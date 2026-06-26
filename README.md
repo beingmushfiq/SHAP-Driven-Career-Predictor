@@ -131,7 +131,7 @@ python -m src.rf_trainer
 
 # 7. Start the web server
 cd webapp
-python manage.py migrate
+// python manage.py migrate
 python manage.py runserver
 ```
 

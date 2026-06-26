@@ -62,6 +62,7 @@ class Config:
     ENABLE_KNN_IMPUTATION = os.environ.get('ENABLE_KNN_IMPUTATION', 'true').lower() == 'true'  # k=5 KNN imputation
     ENABLE_ISOLATION_FOREST = os.environ.get('ENABLE_ISOLATION_FOREST', 'true').lower() == 'true'  # Outlier detection
     ENABLE_DATA_QUALITY_REPORT = os.environ.get('ENABLE_DATA_QUALITY_REPORT', 'true').lower() == 'true'  # Quality metrics
+
     
     # ─── Class Imbalance Handling ──────────────────────────────────
     REBALANCE_METHOD = os.environ.get('REBALANCE_METHOD', 'smote')  # 'smote', 'adasyn', 'borderline_smote'
@@ -69,7 +70,7 @@ class Config:
     # ─── Monotone Constraints (XGBoost) ────────────────────────────
     # Maps feature names to monotone constraint direction: 1=increasing, -1=decreasing, 0=no constraint
     MONOTONE_CONSTRAINTS = {
-        'gpa': 1,  # Higher GPA → better career fit
+        'gpa': 1,
         'coding_skills': 1,
         'analytical_skills': 1,
         'problem_solving_skills': 1,
@@ -112,64 +113,142 @@ class Config:
     ENSEMBLE_WEIGHTS = None  # Auto-computed from CV scores if None
     
     # ─── Career Validation & Alignment ────────────────────────────────
-    # Map academic fields to compatible career clusters
+    # Map academic fields to strictly field-appropriate, model-valid career clusters!
     FIELD_CAREER_ALIGNMENT = {
-        'Computer Science': ['Software Engineer', 'Data & AI Specialist', 'Engineer'],
-        'Engineering': ['Engineer', 'Software Engineer', 'Data & AI Specialist'],
-        'Business': ['Business Manager', 'Marketing Professional', 'Finance Professional', 'Manager'],
-        'Finance': ['Finance Professional', 'Investment & Insurance', 'Business Manager'],
-        'Psychology': ['Psychologist', 'Counselor & Therapist', 'Healthcare Specialist'],
-        'Biology': ['Biologist', 'Healthcare Specialist', 'Doctor & Surgeon'],
-        'Chemistry': ['Chemist', 'Engineer', 'Biologist'],
-        'Physics': ['Physicist', 'Engineer', 'Data & AI Specialist'],
-        'Medicine': ['Doctor & Surgeon', 'Healthcare Specialist', 'Psychologist'],
-        'Law': ['Legal Professional', 'Business Manager'],
-        'Marketing': ['Marketing Professional', 'Brand & Advertising', 'Business Manager'],
-        'Education': ['Educator', 'Psychologist', 'Business Manager'],
-        'Art': ['Visual Artist', 'Brand & Advertising', 'Architect & Planner'],
-        'Architecture': ['Architect & Planner', 'Engineer'],
-        'Music': ['Musician & Audio', 'Educator', 'Visual Artist'],
+        'Computer Science': [
+            'Software Engineer', 'Data & AI Specialist', 'Engineer',
+        ],
+        'Engineering': [
+            'Engineer', 'Architect & Planner', 'Software Engineer', 'Educator',
+        ],
+        'Business': [
+            'Business Manager', 'Marketing Professional', 'Finance Professional',
+        ],
+        'Finance': [
+            'Finance Professional', 'Business Manager', 'Marketing Professional',
+        ],
+        'Psychology': [
+            'Psychologist', 'Educator',
+        ],
+        'Chemistry': [
+            'Chemist', 'Educator',
+        ],
+        'Physics': [
+            'Physicist', 'Educator',
+        ],
+        'Marketing': [
+            'Marketing Professional', 'Business Manager', 'Educator',
+        ],
+        'Education': [
+            'Educator', 'Business Manager',
+        ],
+        'Art': [
+            'Visual Artist', 'Musician & Audio', 'Educator',
+        ],
+        'Architecture': [
+            'Architect & Planner', 'Engineer', 'Educator',
+        ],
+        'Music': [
+            'Musician & Audio', 'Educator',
+        ],
     }
     
     # Map careers to typical interests/domains
     CAREER_INTERESTS = {
-        'Software Engineer': ['Technology', 'Problem-solving', 'Innovation', 'Coding'],
-        'Data & AI Specialist': ['Data Analysis', 'Machine Learning', 'Innovation', 'Research'],
-        'Engineer': ['Technology', 'Design', 'Innovation', 'Problem-solving'],
-        'Doctor & Surgeon': ['Healthcare', 'Science', 'Helping People', 'Research'],
-        'Psychologist': ['Psychology', 'Helping People', 'Research', 'Human Behavior'],
-        'Marketing Professional': ['Business', 'Communication', 'Creativity', 'People'],
-        'Finance Professional': ['Finance', 'Numbers', 'Analysis', 'Strategy'],
-        'Educator': ['Teaching', 'Communication', 'Helping People', 'Knowledge'],
-        'Architect & Planner': ['Design', 'Innovation', 'Creativity', 'Engineering'],
-        'Legal Professional': ['Law', 'Analysis', 'Communication', 'Ethics'],
-        'Business Manager': ['Leadership', 'Strategy', 'People', 'Business'],
-        'Visual Artist': ['Creativity', 'Art', 'Design', 'Innovation'],
-        'Musician & Audio': ['Music', 'Creativity', 'Performance', 'Art'],
-        'Biologist': ['Science', 'Nature', 'Research', 'Innovation'],
-        'Chemist': ['Science', 'Research', 'Problem-solving', 'Innovation'],
+        'Software Engineer': [
+            'Technology', 'Coding', 'Web Development', 'Mobile App Development', 'Game Development',
+            'Artificial Intelligence', 'Problem-solving', 'Cybersecurity', 'Innovation'
+        ],
+        'Data & AI Specialist': [
+            'Technology', 'Artificial Intelligence', 'Data Science', 'Machine Learning',
+            'Research', 'Problem-solving', 'Analytics', 'Innovation'
+        ],
+        'Engineer': [
+            'Technology', 'Design', 'Innovation', 'Problem-solving', 'Engineering'
+        ],
+        'Psychologist': [
+            'Psychology', 'Helping People', 'Research', 'Human Behavior'
+        ],
+        'Marketing Professional': [
+            'Business', 'Communication', 'Creativity', 'People', 'Marketing', 'Advertising'
+        ],
+        'Finance Professional': [
+            'Finance', 'Numbers', 'Analysis', 'Strategy', 'Accounting'
+        ],
+        'Educator': [
+            'Teaching', 'Communication', 'Helping People', 'Knowledge', 'Education'
+        ],
+        'Architect & Planner': [
+            'Design', 'Innovation', 'Creativity', 'Engineering', 'Architecture'
+        ],
+        'Business Manager': [
+            'Leadership', 'Strategy', 'People', 'Business', 'Management'
+        ],
+        'Visual Artist': [
+            'Creativity', 'Art', 'Design', 'Innovation', 'UI/UX', 'Graphic Design'
+        ],
+        'Musician & Audio': [
+            'Music', 'Creativity', 'Performance', 'Art', 'Audio'
+        ],
+        'Chemist': [
+            'Science', 'Research', 'Problem-solving', 'Innovation', 'Chemistry'
+        ],
+        'Physicist': [
+            'Science', 'Research', 'Problem-solving', 'Innovation', 'Physics'
+        ],
     }
     
     # Minimum skill requirements per career (for validation checks)
     CAREER_SKILL_REQUIREMENTS = {
-        'Software Engineer': {'coding_skills': 3.5, 'problem_solving_skills': 3.5, 'analytical_skills': 3.0},
-        'Data & AI Specialist': {'analytical_skills': 3.5, 'problem_solving_skills': 3.5, 'coding_skills': 3.0},
-        'Engineer': {'problem_solving_skills': 3.0, 'analytical_skills': 3.0, 'teamwork_skills': 2.5},
-        'Doctor & Surgeon': {'analytical_skills': 3.0, 'communication_skills': 3.0, 'problem_solving_skills': 3.5},
-        'Psychologist': {'communication_skills': 3.5, 'analytical_skills': 3.0, 'teamwork_skills': 3.0},
-        'Marketing Professional': {'communication_skills': 3.5, 'creativity_skills': 3.0, 'presentation_skills': 3.0},
-        'Finance Professional': {'analytical_skills': 3.5, 'problem_solving_skills': 3.0, 'communication_skills': 2.5},
-        'Educator': {'communication_skills': 3.5, 'presentation_skills': 3.5, 'teamwork_skills': 3.0},
-        'Architect & Planner': {'analytical_skills': 3.0, 'creativity_skills': 3.5, 'problem_solving_skills': 3.0},
-        'Legal Professional': {'analytical_skills': 3.5, 'communication_skills': 3.5, 'problem_solving_skills': 3.0},
-        'Business Manager': {'communication_skills': 3.5, 'leadership_positions': 1, 'teamwork_skills': 3.5},
+        'Software Engineer': {
+            'coding_skills': 3.5, 'problem_solving_skills': 3.5, 'analytical_skills': 3.0,
+            'projects': 2.0
+        },
+        'Data & AI Specialist': {
+            'coding_skills': 3.0, 'analytical_skills': 4.0, 'problem_solving_skills': 3.5,
+            'projects': 2.5
+        },
+        'Engineer': {
+            'problem_solving_skills': 3.0, 'analytical_skills': 3.0, 'teamwork_skills': 2.5,
+            'projects': 2.0
+        },
+        'Psychologist': {
+            'communication_skills': 3.5, 'analytical_skills': 3.0, 'teamwork_skills': 3.0
+        },
+        'Marketing Professional': {
+            'communication_skills': 3.5, 'presentation_skills': 3.0, 'teamwork_skills': 3.0
+        },
+        'Finance Professional': {
+            'analytical_skills': 3.5, 'problem_solving_skills': 3.0, 'communication_skills': 2.5
+        },
+        'Educator': {
+            'communication_skills': 3.5, 'presentation_skills': 3.5, 'teamwork_skills': 3.0
+        },
+        'Architect & Planner': {
+            'analytical_skills': 3.0, 'problem_solving_skills': 3.0, 'presentation_skills': 2.5
+        },
+        'Business Manager': {
+            'communication_skills': 3.5, 'leadership_positions': 1, 'teamwork_skills': 3.5
+        },
+        'Visual Artist': {
+            'communication_skills': 3.0, 'presentation_skills': 2.5
+        },
+        'Musician & Audio': {
+            'communication_skills': 3.0, 'presentation_skills': 3.0
+        },
+        'Chemist': {
+            'analytical_skills': 3.5, 'problem_solving_skills': 3.0
+        },
+        'Physicist': {
+            'analytical_skills': 3.5, 'problem_solving_skills': 3.0
+        },
     }
 
     # ─── XGBoost Base Parameters ────────────────────────────────────
     # Features to exclude from training (field-derived / leaky)
     DROP_FEATURES = [
-        'field',
         'education_alignment_score',
+        'interest_compatibility_score',
         'medicine_gpa_interaction',
         'finance_analytical_interaction',
         'cs_coding_interaction',
@@ -184,6 +263,15 @@ class Config:
         'n_jobs': -1,
         'verbosity': 0,
         'tree_method': 'hist',
+        'max_depth': 10,
+        'learning_rate': 0.1,
+        'n_estimators': 500,
+        'subsample': 1.0,
+        'colsample_bytree': 1.0,
+        'min_child_weight': 1,
+        'gamma': 0,
+        'reg_alpha': 0,
+        'reg_lambda': 0.5,
     }
     EARLY_STOPPING_ROUNDS = 20
 
@@ -246,9 +334,9 @@ class Config:
 
     CATEGORICAL_OPTIONS = {
         'field': [
-            'Architecture', 'Art', 'Biology', 'Business', 'Chemistry',
+            'Architecture', 'Art', 'Business', 'Chemistry',
             'Computer Science', 'Education', 'Engineering', 'Finance',
-            'Law', 'Marketing', 'Medicine', 'Music', 'Physics', 'Psychology'
+            'Marketing', 'Music', 'Physics', 'Psychology'
         ],
     }
 
@@ -258,50 +346,71 @@ class Config:
 
     CAREER_CLUSTERS = {
         # Technology
-        'Software Engineer': ['Software Developer', 'Web Developer', 'Game Developer'],
-        'Data & AI Specialist': ['Data Scientist', 'AI Researcher', 'Cybersecurity Analyst'],
+        'Software Engineer': [
+            'Software Development and Engineering', 'Development', 'Security',
+            'Software Developer', 'Web Developer', 'Game Developer'
+        ],
+        'Data & AI Specialist': [
+            'Data Science', 'Artificial Intelligence',
+            'Data Scientist', 'AI Researcher', 'Cybersecurity Analyst'
+        ],
         # Engineering
-        'Engineer': ['Civil Engineer', 'Mechanical Engineer', 'Electrical Engineer',
-                     'Chemical Engineer', 'Aerospace Engineer', 'Biomedical Engineer',
-                     'Fluid Mechanics Engineer', 'Acoustics Specialist'],
-        # Healthcare
-        'Doctor & Surgeon': ['Doctor', 'Surgeon', 'Physician Assistant'],
-        'Healthcare Specialist': ['Nurse', 'Pharmacist', 'Dentist'],
+        'Engineer': [
+            'Civil Engineer', 'Mechanical Engineer', 'Electrical Engineer',
+            'Chemical Engineer', 'Aerospace Engineer', 'Biomedical Engineer',
+            'Fluid Mechanics Engineer', 'Acoustics Specialist'
+        ],
         # Business & Management
-        'Business Manager': ['Manager', 'Entrepreneur', 'Construction Manager',
-                             'Human Resources Specialist'],
-        # Finance
-        'Finance Professional': ['Financial Analyst', 'Financial Advisor', 'Financial Controller',
-                                 'Accountant', 'Credit Analyst', 'Risk Analyst'],
-        'Investment & Insurance': ['Investment Banker', 'Actuary'],
-        # Marketing
-        'Marketing Professional': ['Marketing Manager', 'Marketing Specialist',
-                                   'Digital Marketing Specialist', 'Social Media Manager',
-                                   'Market Research Analyst'],
-        'Brand & Advertising': ['Brand Manager', 'Advertising Manager'],
-        # Law
-        'Legal Professional': ['Lawyer', 'Judge', 'Legal Consultant', 'Legal Analyst'],
-        'Legal Support': ['Paralegal', 'Legal Secretary'],
+        'Business Manager': [
+            'Manager', 'Entrepreneur', 'Construction Manager',
+            'Human Resources Specialist'
+        ],
+        # Finance (merged Investment & Insurance into Finance Professional)
+        'Finance Professional': [
+            'Financial Analyst', 'Financial Advisor', 'Financial Controller',
+            'Accountant', 'Credit Analyst', 'Risk Analyst',
+            'Investment Banker', 'Actuary'
+        ],
+        # Marketing (merged Brand & Advertising into Marketing Professional)
+        'Marketing Professional': [
+            'Marketing Manager', 'Marketing Specialist',
+            'Digital Marketing Specialist', 'Social Media Manager',
+            'Market Research Analyst',
+            'Brand Manager', 'Advertising Manager'
+        ],
         # Education
-        'Educator': ['Teacher', 'Special Education Teacher', 'Music Teacher',
-                     'Principal', 'Education Administrator', 'Curriculum Developer'],
-        # Psychology
-        'Psychologist': ['Psychologist', 'Clinical Psychologist', 'Forensic Psychologist',
-                         'School Psychologist', 'Industrial-Organizational Psychologist'],
-        'Counselor & Therapist': ['Counselor', 'School Counselor', 'Art Therapist', 'Music Therapist'],
+        'Educator': [
+            'Teacher', 'Special Education Teacher', 'Music Teacher',
+            'Principal', 'Education Administrator', 'Curriculum Developer'
+        ],
+        # Psychology (merged Counselor & Therapist into Psychologist)
+        'Psychologist': [
+            'Psychologist', 'Clinical Psychologist', 'Forensic Psychologist',
+            'School Psychologist', 'Industrial-Organizational Psychologist',
+            'Counselor', 'School Counselor', 'Art Therapist', 'Music Therapist'
+        ],
         # Sciences
-        'Biologist': ['Biologist', 'Microbiologist', 'Geneticist', 'Biochemist',
-                      'Biotechnologist', 'Ecologist', 'Zoologist'],
-        'Chemist': ['Chemist', 'Analytical Chemist', 'Organic Chemist',
-                    'Inorganic Chemist', 'Physical Chemist'],
-        'Physicist': ['Physicist', 'Nuclear Physicist', 'Quantum Physicist', 'Astronomer'],
+        'Chemist': [
+            'Chemist', 'Analytical Chemist', 'Organic Chemist',
+            'Inorganic Chemist', 'Physical Chemist'
+        ],
+        'Physicist': [
+            'Physicist', 'Nuclear Physicist', 'Quantum Physicist', 'Astronomer'
+        ],
         # Architecture & Design
-        'Architect & Planner': ['Architect', 'Urban Planner', 'Landscape Architect',
-                                'Interior Designer', 'Architectural Technologist'],
+        'Architect & Planner': [
+            'Architect', 'Urban Planner', 'Landscape Architect',
+            'Interior Designer', 'Architectural Technologist'
+        ],
         # Creative Arts
-        'Visual Artist': ['Artist', 'Art Director', 'Graphic Designer',
-                          'Illustrator', 'Animator'],
-        'Musician & Audio': ['Musician', 'Composer', 'Conductor', 'Sound Engineer'],
+        'Visual Artist': [
+            'User Experience (UX) and User Interface (UI) Design',
+            'Artist', 'Art Director', 'Graphic Designer',
+            'Illustrator', 'Animator'
+        ],
+        'Musician & Audio': [
+            'Musician', 'Composer', 'Conductor', 'Sound Engineer'
+        ],
     }
 
     # Build reverse mapping: original_career → cluster_name
@@ -309,6 +418,29 @@ class Config:
     for cluster, careers in CAREER_CLUSTERS.items():
         for career in careers:
             _CAREER_TO_CLUSTER[career] = cluster
+
+    # ─── Unsupported Domains (filtered at inference time) ────────────
+    # These clusters may exist in legacy model artifacts but must never
+    # be shown to users or returned as recommendations.
+    UNSUPPORTED_CAREER_CLUSTERS = {
+        'Doctor & Surgeon',
+        'Healthcare Specialist',
+        'Legal Professional',
+        'Legal Support',
+        'Biologist',
+    }
+
+    # Minimum Career Alignment Score to accept a recommendation
+    MIN_ALIGNMENT_SCORE = 40.0
+
+    # Weights for the Career Alignment Score
+    ALIGNMENT_WEIGHT_EDUCATION = 0.40
+    ALIGNMENT_WEIGHT_SKILL = 0.35
+    ALIGNMENT_WEIGHT_INTEREST = 0.25
+
+    # Weight for combining model confidence vs alignment score in final ranking
+    RANK_WEIGHT_CONFIDENCE = 0.50
+    RANK_WEIGHT_ALIGNMENT = 0.50
 
     @classmethod
     def get_cluster_for_career(cls, career: str) -> str:
@@ -325,29 +457,28 @@ class Config:
         'AI Researcher', 'Accountant', 'Acoustics Specialist', 'Actuary',
         'Advertising Manager', 'Aerospace Engineer', 'Analytical Chemist',
         'Animator', 'Architect', 'Architectural Technologist', 'Art Director',
-        'Art Therapist', 'Artist', 'Astronomer', 'Biochemist', 'Biologist',
-        'Biomedical Engineer', 'Biotechnologist', 'Brand Manager',
+        'Art Therapist', 'Artist', 'Astronomer', 'Biomedical Engineer',
+        'Brand Manager',
         'Chemical Engineer', 'Chemist', 'Civil Engineer', 'Clinical Psychologist',
         'Composer', 'Conductor', 'Construction Manager', 'Counselor',
         'Credit Analyst', 'Curriculum Developer', 'Cybersecurity Analyst',
-        'Data Scientist', 'Dentist', 'Digital Marketing Specialist', 'Doctor',
-        'Ecologist', 'Education Administrator', 'Electrical Engineer',
+        'Data Scientist', 'Digital Marketing Specialist',
+        'Education Administrator', 'Electrical Engineer',
         'Entrepreneur', 'Financial Advisor', 'Financial Analyst',
         'Financial Controller', 'Fluid Mechanics Engineer', 'Forensic Psychologist',
-        'Game Developer', 'Geneticist', 'Graphic Designer',
+        'Game Developer', 'Graphic Designer',
         'Human Resources Specialist', 'Illustrator',
         'Industrial-Organizational Psychologist', 'Inorganic Chemist',
-        'Interior Designer', 'Investment Banker', 'Judge', 'Landscape Architect',
-        'Lawyer', 'Legal Analyst', 'Legal Consultant', 'Legal Secretary',
+        'Interior Designer', 'Investment Banker', 'Landscape Architect',
         'Manager', 'Market Research Analyst', 'Marketing Manager',
-        'Marketing Specialist', 'Mechanical Engineer', 'Microbiologist',
+        'Marketing Specialist', 'Mechanical Engineer',
         'Music Teacher', 'Music Therapist', 'Musician', 'Nuclear Physicist',
-        'Nurse', 'Organic Chemist', 'Paralegal', 'Pharmacist', 'Physical Chemist',
-        'Physician Assistant', 'Physicist', 'Principal', 'Psychologist',
+        'Organic Chemist', 'Physical Chemist',
+        'Physicist', 'Principal', 'Psychologist',
         'Quantum Physicist', 'Risk Analyst', 'School Counselor',
         'School Psychologist', 'Social Media Manager', 'Software Developer',
-        'Sound Engineer', 'Special Education Teacher', 'Surgeon', 'Teacher',
-        'Urban Planner', 'Web Developer', 'Zoologist'
+        'Sound Engineer', 'Special Education Teacher', 'Teacher',
+        'Urban Planner', 'Web Developer'
     ]
 
     # ─── Logging ────────────────────────────────────────────────────

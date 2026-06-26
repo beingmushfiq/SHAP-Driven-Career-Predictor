@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "model_type": "RandomForestClassifier",
   "dataset": "career_aptitude_dataset.csv",
-  "trained_at": "2026-06-25T21:54:16.763175+00:00",
+  "trained_at": "2026-06-26T22:06:43.104170+00:00",
   "sklearn_version": "1.9.0",
   "n_features": 19,
   "feature_names": [
@@ -26,23 +26,18 @@
     "enterprising_interest",
     "conventional_interest"
   ],
-  "n_classes": 21,
+  "n_classes": 16,
   "class_labels": [
     "Architect & Planner",
-    "Biologist",
     "Brand & Advertising",
     "Business Manager",
     "Chemist",
     "Counselor & Therapist",
     "Data & AI Specialist",
-    "Doctor & Surgeon",
     "Educator",
     "Engineer",
     "Finance Professional",
-    "Healthcare Specialist",
     "Investment & Insurance",
-    "Legal Professional",
-    "Legal Support",
     "Marketing Professional",
     "Musician & Audio",
     "Physicist",
@@ -51,20 +46,20 @@
     "Visual Artist"
   ],
   "best_params": {
-    "n_estimators": 200,
-    "max_depth": null,
-    "min_samples_split": 12,
-    "min_samples_leaf": 2,
+    "n_estimators": 300,
+    "max_depth": 20,
+    "min_samples_split": 13,
+    "min_samples_leaf": 1,
     "max_features": "log2",
-    "class_weight": "balanced_subsample"
+    "class_weight": "balanced"
   },
   "metrics": {
-    "accuracy": 0.932143,
-    "f1_weighted": 0.932095,
-    "precision_weighted": 0.932695,
-    "recall_weighted": 0.932143,
-    "cv_accuracy_mean": 0.915476,
-    "cv_accuracy_std": 0.009144
+    "accuracy": 0.928571,
+    "f1_weighted": 0.928535,
+    "precision_weighted": 0.928977,
+    "recall_weighted": 0.928571,
+    "cv_accuracy_mean": 0.914286,
+    "cv_accuracy_std": 0.00512
   },
   "random_seed": 42
 }

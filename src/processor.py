@@ -143,6 +143,38 @@ class DataProcessor:
         )
         return df.reset_index(drop=True)
 
+    def _filter_unsupported_careers(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Remove rows whose career target maps to an unsupported domain
+        or whose field of study is no longer supported."""
+        target_col = Config.TARGET_COLUMN
+        unsupported = Config.UNSUPPORTED_CAREER_CLUSTERS
+        original_len = len(df)
+
+        # Filter unsupported career targets
+        if target_col in df.columns:
+            def _is_unsupported(career: str) -> bool:
+                career = str(career).strip()
+                cluster = Config.get_cluster_for_career(career)
+                if cluster in unsupported:
+                    return True
+                if career in unsupported:
+                    return True
+                return False
+
+            mask = df[target_col].astype(str).apply(_is_unsupported)
+            df = df[~mask].reset_index(drop=True)
+
+        # Filter unsupported fields of study
+        supported_fields = set(f.lower() for f in Config.CATEGORICAL_OPTIONS.get('field', []))
+        if 'field' in df.columns and supported_fields:
+            field_mask = df['field'].astype(str).str.strip().str.lower().isin(supported_fields)
+            df = df[field_mask].reset_index(drop=True)
+
+        dropped = original_len - len(df)
+        if dropped > 0:
+            logger.info(f"Filtered {dropped} rows with unsupported career domains or fields")
+        return df
+
     def _detect_fuzzy_duplicates(self, df: pd.DataFrame, similarity_threshold: float = 0.95) -> list:
         """
         Detect fuzzy duplicates by comparing ALL feature columns.
@@ -453,7 +485,10 @@ class DataProcessor:
         # 2. Clean
         df = self.clean_data(df)
         
-        # 2.5 Data Quality Report
+        # 2.5 Filter unsupported career domains
+        df = self._filter_unsupported_careers(df)
+        
+        # 2.6 Data Quality Report
         quality_report = self._generate_data_quality_report(df)
 
         # 3. Impute
